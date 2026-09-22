@@ -1,0 +1,32 @@
+{
+  "name": "civision",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "nodemon --exec tsx src/index.ts",
+    "test": "nodemon --exec tsx src/index.ts",
+    "start": "nodemon --exec tsx src/index.ts",
+    "postinstall": "prisma skills sync || exit 0"
+  },
+  "dependencies": {
+    "@prisma/adapter-mariadb": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "colors": "^1.4.0",
+    "dotenv": "^18.0.1",
+    "express": "^5.2.1",
+    "node": "^26.9.0",
+    "nodemon": "^3.1.14"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.4",
+    "prisma": "^7.10.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.2"
+  }
+}

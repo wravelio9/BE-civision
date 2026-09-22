@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "civision",
   "version": "1.0.0",
   "description": "Backend Civision - PKL Detection Report",
@@ -19,14 +19,15 @@
     "colors": "^1.4.0",
     "dotenv": "^18.0.1",
     "express": "^5.2.1",
+    "multer": "^2.4.0",
     "nodemon": "^3.1.14"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.20.4",
     "prisma": "^7.10.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2"
   }
 }
-

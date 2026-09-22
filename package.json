@@ -8,8 +8,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "nodemon --exec tsx src/index.ts",
-    "test": "nodemon --exec tsx src/index.ts",
-    "start": "nodemon --exec tsx src/index.ts",
+    "start": "tsx src/index.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
@@ -17,17 +16,18 @@
     "@prisma/client": "^7.10.0",
     "axios": "^1.20.0",
     "colors": "^1.4.0",
+    "cors": "^2.8.6",
     "dotenv": "^18.0.1",
     "express": "^5.2.1",
     "form-data": "^4.0.6",
-    "multer": "^2.4.0",
-    "node": "^26.9.0",
-    "nodemon": "^3.1.14"
+    "multer": "^2.4.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.20.4",
+    "nodemon": "^3.1.14",
     "prisma": "^7.10.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",

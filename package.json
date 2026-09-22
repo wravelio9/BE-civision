@@ -1,16 +1,17 @@
-{
+﻿{
   "name": "civision",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend Civision - PKL Detection Report",
   "license": "ISC",
   "author": "",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "dev": "nodemon --exec tsx src/index.ts",
-    "test": "nodemon --exec tsx src/index.ts",
-    "start": "nodemon --exec tsx src/index.ts",
-    "postinstall": "prisma skills sync || exit 0"
+    "start": "node --import tsx src/index.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "postinstall": "prisma generate || exit 0"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.10.0",
@@ -29,8 +30,8 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^22.20.4",
     "prisma": "^7.10.0",
-    "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2"
   }
 }
+

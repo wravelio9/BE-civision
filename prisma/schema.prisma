@@ -1,0 +1,103 @@
+// Prisma schema - Civision PKL Detection Report
+// Provider: MySQL. URL koneksi ada di prisma.config.ts (Prisma v7).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Zone {
+  id         String      @id @default(uuid())
+  name       String
+  points     Json
+  createdAt  DateTime    @default(now())
+  violations Violation[]
+}
+
+model MediaFile {
+  id           String     @id @default(uuid())
+  originalName String     @db.VarChar(255)
+  mediaType    MediaType
+  sizeBytes    Int
+  storagePath  String
+  uploadedAt   DateTime   @default(now())
+  analyses     Analysis[]
+}
+
+model Analysis {
+  id            String      @id @default(uuid())
+  mediaId       String
+  media         MediaFile   @relation(fields: [mediaId], references: [id])
+  detectorMode  String      @default("proxy")
+  status        String      @default("pending")
+  progress      Int         @default(0)
+  photoCount    Int         @default(0)
+  videoDuration Float       @default(0)
+  analyzedAt    DateTime    @default(now())
+  violations    Violation[]
+  report        Report?
+}
+
+model Violation {
+  id               String           @id @default(uuid())
+  analysisId       String
+  analysis         Analysis         @relation(fields: [analysisId], references: [id])
+  zoneId           String?
+  zone             Zone?            @relation(fields: [zoneId], references: [id])
+  lat              Float
+  lng              Float
+  confidence       Float
+  bbox             Json
+  coordinateSource CoordinateSource
+  startTimeSec     Float?
+  endTimeSec       Float?
+  address          String?
+  locationStatus   String           @default("matched")
+  status           ValidationStatus @default(pending_review)
+  followUp         FollowUpStatus   @default(belum)
+  createdAt        DateTime         @default(now())
+  annotatedFrames  AnnotatedFrame[]
+}
+
+model AnnotatedFrame {
+  id          String    @id @default(uuid())
+  violationId String
+  violation   Violation @relation(fields: [violationId], references: [id])
+  imagePath   String
+}
+
+model Report {
+  id              String   @id @default(uuid())
+  analysisId      String   @unique
+  analysis        Analysis @relation(fields: [analysisId], references: [id])
+  totalViolations Int      @default(0)
+  coverageSummary String
+  pdfPath         String?
+  createdAt       DateTime @default(now())
+}
+
+enum MediaType {
+  photo
+  video
+}
+
+enum CoordinateSource {
+  gps_exif
+  ocr
+  manual
+}
+
+enum ValidationStatus {
+  pending_review
+  valid
+  rejected
+}
+
+enum FollowUpStatus {
+  belum
+  sudah
+}

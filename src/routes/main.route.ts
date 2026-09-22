@@ -1,22 +1,13 @@
 import express from "express"
-import multer from "multer";
+import upload from "../middlewares/upload.js"
 import Controller from "../controller/main.controller.js"
 const app = express.Router()
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // maks 10MB per file
-});
-
-app.post("/upload", upload.array("photos", 20), Controller.upload)
+// Satu endpoint upload untuk gambar & video. Field name: "files" (bisa banyak).
+app.post("/upload", upload.array("files", 20), Controller.upload)
 
 app.get("/report", Controller.report)
 
 // app.put()
 
 export default app;
-
-// C create
-// R read
-// u update
-// d delete

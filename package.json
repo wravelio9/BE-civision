@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "civision",
   "version": "1.0.0",
   "description": "Backend Civision - PKL Detection Report",
@@ -24,7 +24,8 @@
     "dotenv": "^18.0.1",
     "express": "^5.2.1",
     "form-data": "^4.0.6",
-    "multer": "^2.4.0"
+    "multer": "^2.4.0",
+    "nodemon": "^3.1.14"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

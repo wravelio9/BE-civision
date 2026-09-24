@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
     "@turf/boolean-valid": "^7.4.0",
     "@turf/helpers": "^7.4.0",
     "@turf/line-intersect": "^7.4.0",

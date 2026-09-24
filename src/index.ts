@@ -6,12 +6,13 @@ dotenv.config();
 import logger from "./middlewares/logger.js"
 import apiRoute from "./routes/main.route.js";
 import zoneRoute from "./routes/zone.route.js";
+import analysisRoute from "./routes/analysis.route.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json()); // parse body JSON (dibutuhkan endpoint zona)
+app.use(express.json()); // parse body JSON (dibutuhkan endpoint zona & analisis)
 // app.use(logger);
 
 app.get("/health", (req, res) => {
@@ -19,7 +20,8 @@ app.get("/health", (req, res) => {
 })
 
 app.use(apiRoute);
-app.use("/api", zoneRoute); // Zona: /api/zones
+app.use("/api", zoneRoute);      // Zona: /api/zones
+app.use("/api", analysisRoute);  // Analisis: /api/analysis
 
 // Only start a listener when running locally, not on Vercel (serverless).
 if (!process.env.VERCEL) {

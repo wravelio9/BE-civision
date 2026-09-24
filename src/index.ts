@@ -15,7 +15,7 @@ app.use(express.json()); // parse body JSON (dibutuhkan endpoint zona)
 // app.use(logger);
 
 app.get("/health", (req, res) => {
-    res.json({ status: 'OK', env: PORT })
+    res.json({ status: 'OK', env: PORT})
 })
 
 app.use(apiRoute);

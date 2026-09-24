@@ -30,30 +30,30 @@ class Service {
     }
 
     // Kirim satu video ke AI /predict-video.
-    static async uploadVideo(buffer: any, filename: any, mimetype: any, conf: any) {
-        const form = new FormData();
-        // Field name harus "file" agar cocok dengan parameter di app.py (/predict-video).
-        form.append("file", buffer, { filename, contentType: mimetype });
+    // static async uploadVideo(buffer: any, filename: any, mimetype: any, conf: any) {
+    //     const form = new FormData();
+    //     // Field name harus "file" agar cocok dengan parameter di app.py (/predict-video).
+    //     form.append("file", buffer, { filename, contentType: mimetype });
 
-        const url = `${AI_SERVICE_URL}/predict-video`;
+    //     const url = `${AI_SERVICE_URL}/predict-video`;
 
-        const response = await axios.post(url, form, {
-            params: { conf },
-            headers: form.getHeaders(),
-            // Video bisa besar & pemrosesan lama, beri ruang.
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-            timeout: 15 * 60 * 1000, // 15 menit
-        });
+    //     const response = await axios.post(url, form, {
+    //         params: { conf },
+    //         headers: form.getHeaders(),
+    //         // Video bisa besar & pemrosesan lama, beri ruang.
+    //         maxContentLength: Infinity,
+    //         maxBodyLength: Infinity,
+    //         timeout: 15 * 60 * 1000, // 15 menit
+    //     });
 
-        return response.data;
-    }
+    //     return response.data;
+    // }
 
     // Router: pisahkan file berdasarkan mimetype lalu teruskan ke endpoint AI yang sesuai.
     // Gambar dikirim sekaligus (batch), video dikirim satu per satu.
     static async upload(files: any[], conf: number) {
         const images = files.filter((f) => (f.mimetype || "").startsWith("image/"));
-        const videos = files.filter((f) => (f.mimetype || "").startsWith("video/"));
+        // const videos = files.filter((f) => (f.mimetype || "").startsWith("video/"));
 
         const result: { images?: any; videos?: any[] } = {};
 
@@ -61,18 +61,18 @@ class Service {
             result.images = await this.uploadImages(images, conf);
         }
 
-        if (videos.length > 0) {
-            result.videos = [];
-            for (const video of videos) {
-                const data = await this.uploadVideo(
-                    video.buffer,
-                    video.originalname,
-                    video.mimetype,
-                    conf,
-                );
-                result.videos.push({ filename: video.originalname, data });
-            }
-        }
+        // if (videos.length > 0) {
+        //     result.videos = [];
+        //     for (const video of videos) {
+        //         const data = await this.uploadVideo(
+        //             video.buffer,
+        //             video.originalname,
+        //             video.mimetype,
+        //             conf,
+        //         );
+        //         result.videos.push({ filename: video.originalname, data });
+        //     }
+        // }
 
         return result;
     }

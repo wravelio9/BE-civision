@@ -57,7 +57,7 @@ model Violation {
   endTimeSec       Float?
   address          String?
   locationStatus   String           @default("matched")
-  status           ValidationStatus @default(pending_review)
+  status           ValidationStatus @default(unverified)
   followUp         FollowUpStatus   @default(belum)
   createdAt        DateTime         @default(now())
   annotatedFrames  AnnotatedFrame[]
@@ -92,9 +92,9 @@ enum CoordinateSource {
 }
 
 enum ValidationStatus {
-  pending_review
+  unverified
   valid
-  rejected
+  invalid
 }
 
 enum FollowUpStatus {

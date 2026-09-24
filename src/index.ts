@@ -5,20 +5,30 @@ import cors from "cors"
 dotenv.config();
 import logger from "./middlewares/logger.js"
 import apiRoute from "./routes/main.route.js";
+import zoneRoute from "./routes/zone.route.js";
+import analysisRoute from "./routes/analysis.route.js";
+import violationRoute from "./routes/violation.route.js";
+import dashboardRoute from "./routes/dashboard.route.js";
+import historyRoute from "./routes/history.route.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+app.use(express.json());
 // app.use(logger);
 
 app.get("/health", (req, res) => {
-    res.json({ status: 'OK', env: PORT })
+    res.json({ status: 'OK', env: PORT})
 })
 
 app.use(apiRoute);
+app.use("/api", zoneRoute);       // Zona: /api/zones
+app.use("/api", analysisRoute);   // Analisis: /api/analysis
+app.use("/api", violationRoute);  // Validasi pelanggaran: /api/violations
+app.use("/api", dashboardRoute);  // Dashboard peta: /api/dashboard/map
+app.use("/api", historyRoute);    // Riwayat analisis: /api/history
 
-// Only start a listener when running locally, not on Vercel (serverless).
 if (!process.env.VERCEL) {
     app.listen(PORT, () => {
         console.log(`BE is running on http://localhost:${PORT}`)

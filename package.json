@@ -28,13 +28,15 @@
     "express": "^5.2.1",
     "form-data": "^4.0.6",
     "multer": "^2.4.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "pdfkit": "^0.20.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.20.4",
+    "@types/pdfkit": "^0.17.6",
     "prisma": "^7.10.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2"

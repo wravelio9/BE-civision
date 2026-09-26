@@ -4,6 +4,6 @@ import ReportController from "../controller/report.controller.js";
 
 const router = express.Router();
 router.get("/reports", ReportController.list);
-// endpoint PDF ditambahkan di tahap berikutnya
+router.get("/reports/:id/pdf", ReportController.downloadPdf);
 
 export default router;

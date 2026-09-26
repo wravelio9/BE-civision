@@ -10,6 +10,7 @@ import analysisRoute from "./routes/analysis.route.js";
 import violationRoute from "./routes/violation.route.js";
 import dashboardRoute from "./routes/dashboard.route.js";
 import historyRoute from "./routes/history.route.js";
+import reportRoute from "./routes/report.route.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use("/api", analysisRoute);   // Analisis: /api/analysis
 app.use("/api", violationRoute);  // Validasi pelanggaran: /api/violations
 app.use("/api", dashboardRoute);  // Dashboard peta: /api/dashboard/map
 app.use("/api", historyRoute);    // Riwayat analisis: /api/history
+app.use("/api", reportRoute);     // Laporan: /api/reports
 
 if (!process.env.VERCEL) {
     app.listen(PORT, () => {

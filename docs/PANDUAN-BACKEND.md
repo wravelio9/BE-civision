@@ -7,8 +7,8 @@ pernah sentuh backend, dan contekan saat presentasi/demo.
 
 ## 1. Backend ini tugasnya apa?
 
-Menerima foto → cari tahu lokasinya → cek apakah masuk zona terlarang →
-simpan sebagai "pelanggaran" → sediakan datanya buat ditampilkan & diverifikasi.
+Menerima foto â†’ cari tahu lokasinya â†’ cek apakah masuk zona terlarang â†’
+simpan sebagai "pelanggaran" â†’ sediakan datanya buat ditampilkan & diverifikasi.
 
 Analogi: backend = "petugas administrasi" (mencatat & memutuskan).
 AI (Wilson) = "mata" (mendeteksi). Frontend (Shavelina) = "wajah" (yang dilihat user).
@@ -88,14 +88,14 @@ POST /api/zones  ->  zone.route  ->  zone.controller.create  ->  zone.service.cr
 
 | Fitur | Method + Path | Dokumentasi |
 |-------|---------------|-------------|
-| Kelola zona | GET/POST/PUT/DELETE /api/zones | docs/api-zona.md |
+| Kelola zona | GET/POST/PUT/DELETE /api/zones | api/zona.md |
 | Analisis (simpan pelanggaran) | POST /api/analysis | - |
-| Data peta dashboard | GET /api/dashboard/map | docs/api-dashboard.md |
-| Validasi pelanggaran | PATCH /api/violations/:id/status | docs/api-validasi-pelanggaran.md |
-| Tindak lanjut | PATCH /api/violations/:id/follow-up | docs/api-validasi-pelanggaran.md |
-| Daftar pelanggaran aktif | GET /api/violations | docs/api-validasi-pelanggaran.md |
-| Riwayat analisis | GET /api/history | docs/api-riwayat.md |
-| Detail laporan | GET /api/history/:id | docs/api-riwayat.md |
+| Data peta dashboard | GET /api/dashboard/map | api/dashboard.md |
+| Validasi pelanggaran | PATCH /api/violations/:id/status | api/validasi-pelanggaran.md |
+| Tindak lanjut | PATCH /api/violations/:id/follow-up | api/validasi-pelanggaran.md |
+| Daftar pelanggaran aktif | GET /api/violations | api/validasi-pelanggaran.md |
+| Riwayat analisis | GET /api/history | api/riwayat.md |
+| Detail laporan | GET /api/history/:id | api/riwayat.md |
 | Upload (Wilson) | POST /upload | - |
 
 ---

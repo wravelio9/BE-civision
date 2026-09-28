@@ -1,6 +1,7 @@
 // Service Laporan (Requirement 7): statistik + tabel laporan + data 1 laporan (buat PDF).
 // Tabel menampilkan SEMUA status (valid/invalid/unverified).
-import prisma from "../db/prisma.js";
+// Akses database didelegasikan ke ReportRepository.
+import ReportRepository from "../repository/report.repository.js";
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
 
@@ -8,20 +9,17 @@ class ReportService {
   // Statistik untuk kartu di atas tabel (total/valid/invalid/unverified).
   static async stats() {
     const [total, valid, invalid, unverified] = await Promise.all([
-      prisma.violation.count(),
-      prisma.violation.count({ where: { status: "valid" } }),
-      prisma.violation.count({ where: { status: "invalid" } }),
-      prisma.violation.count({ where: { status: "unverified" } }),
+      ReportRepository.countAll(),
+      ReportRepository.countByStatus("valid"),
+      ReportRepository.countByStatus("invalid"),
+      ReportRepository.countByStatus("unverified"),
     ]);
     return { total, valid, invalid, unverified };
   }
 
   // Daftar laporan (baris tabel) - SEMUA status ditampilkan.
   static async listTable() {
-    const violations = await prisma.violation.findMany({
-      include: { analysis: { include: { media: true } }, annotatedFrames: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const violations = await ReportRepository.findAllWithRelations();
 
     return violations.map((v) => {
       const t = v.createdAt;
@@ -42,10 +40,7 @@ class ReportService {
 
   // Data 1 laporan (buat isi PDF).
   static async getOne(violationId: string) {
-    const v = await prisma.violation.findUnique({
-      where: { id: violationId },
-      include: { analysis: { include: { media: true } }, zone: true, annotatedFrames: true },
-    });
+    const v = await ReportRepository.findByIdWithRelations(violationId);
     if (!v) return null;
     const t = v.createdAt;
     return {

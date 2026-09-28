@@ -1,6 +1,7 @@
 // Persist Service: mengubah hasil deteksi + koordinat menjadi record
 // Analysis + Violation di database (atomik via transaksi). Requirement 5.2, 5.3, 5.4, 4.7.
-import prisma from "../db/prisma.js";
+// Akses database didelegasikan ke AnalysisPersistRepository.
+import AnalysisPersistRepository from "../repository/analysisPersist.repository.js";
 import { matchZone, type ZoneLike } from "./zoneMatcher.service.js";
 import { isWithinRegion, type LatLon } from "./exif.service.js";
 import { reverseGeocode } from "./geocode.service.js";
@@ -43,7 +44,7 @@ class AnalysisPersistService {
   // Simpan satu Analysis beserta Violation-nya secara atomik.
   static async persist(input: PersistAnalysisInput): Promise<PersistResult> {
     // Ambil zona sekali (dipakai untuk semua unit).
-    const zonesRaw = await prisma.zone.findMany();
+    const zonesRaw = await AnalysisPersistRepository.findAllZones();
     const zones: ZoneLike[] = zonesRaw.map((z) => ({
       id: z.id,
       name: z.name,
@@ -98,27 +99,18 @@ class AnalysisPersistService {
     }
 
     // Tulis Analysis + Violation secara atomik (Req 4.7).
-    const result = await prisma.$transaction(async (tx) => {
-      const analysis = await tx.analysis.create({
-        data: {
-          mediaId: input.mediaId,
-          detectorMode: input.detectorMode ?? "proxy",
-          status: "done",
-          progress: 100,
-          photoCount: input.photoCount ?? 0,
-          videoDuration: input.videoDuration ?? 0,
-        },
-      });
-
-      for (const v of violationData) {
-        await tx.violation.create({ data: { ...v, analysisId: analysis.id } });
-      }
-
-      return analysis;
-    });
+    const analysis = await AnalysisPersistRepository.createAnalysisWithViolations(
+      {
+        mediaId: input.mediaId,
+        detectorMode: input.detectorMode ?? "proxy",
+        photoCount: input.photoCount ?? 0,
+        videoDuration: input.videoDuration ?? 0,
+      },
+      violationData,
+    );
 
     return {
-      analysisId: result.id,
+      analysisId: analysis.id,
       totalDetections,
       totalViolations: violationData.length,
       unknownLocation,

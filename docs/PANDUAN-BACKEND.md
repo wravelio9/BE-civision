@@ -1,106 +1,121 @@
 # Panduan Backend Civision (Bahasa Manusia)
 
-Dokumen ini menjelaskan backend TANPA istilah teknis rumit. Buat ketua tim & anggota
-yang belum pernah sentuh backend, dan buat contekan saat presentasi/demo.
+Panduan backend TANPA istilah teknis rumit. Buat ketua tim & anggota yang belum
+pernah sentuh backend, dan contekan saat presentasi/demo.
 
 ---
 
 ## 1. Backend ini tugasnya apa?
 
-Menerima foto/video → cari tahu lokasinya → cek apakah masuk zona terlarang →
-simpan sebagai "pelanggaran" → sediakan datanya buat ditampilkan.
+Menerima foto â†’ cari tahu lokasinya â†’ cek apakah masuk zona terlarang â†’
+simpan sebagai "pelanggaran" â†’ sediakan datanya buat ditampilkan & diverifikasi.
 
-Analogi: backend = "petugas administrasi" yang mencatat & memutuskan.
-AI (Wilson) = "mata" yang mendeteksi. Frontend (Shavelina) = "wajah" yang dilihat user.
+Analogi: backend = "petugas administrasi" (mencatat & memutuskan).
+AI (Wilson) = "mata" (mendeteksi). Frontend (Shavelina) = "wajah" (yang dilihat user).
 
 ---
 
-## 2. Struktur Folder (isi tiap folder)
+## 2. ALUR SISTEM (dari foto sampai tampil di peta)
+
+```
+1. Petugas gambar ZONA TERLARANG di peta
+   -> POST /api/zones -> tersimpan di database
+
+2. Foto PKL diupload -> dikirim ke AI (Wilson)
+   -> AI balikin: deteksi gerobak + kotak (bbox) + tingkat keyakinan (confidence)
+
+3. Backend TERIMA hasil AI -> POST /api/analysis
+   - Baca koordinat foto: GPS EXIF -> OCR -> manual (berjenjang)
+   - Cek: koordinat masuk zona terlarang? (perhitungan point-in-polygon)
+   - Kalau YA -> catat PELANGGARAN (status awal: unverified / abu-abu)
+   - Simpan ke database
+
+4. Petugas lihat DASHBOARD PETA
+   -> GET /api/dashboard/map -> pin muncul di peta (+ zona)
+   -> hover: lihat detail | klik: tombol verifikasi
+
+5. Petugas VERIFIKASI
+   -> PATCH /api/violations/:id/status -> valid (hijau) / invalid (disembunyikan)
+   -> PATCH /api/violations/:id/follow-up -> sudah / belum ditindak
+
+6. Lihat RIWAYAT kapan saja
+   -> GET /api/history -> daftar analisis lampau + laporannya
+```
+
+---
+
+## 3. Struktur Folder
 
 ```
 src/
-├── index.ts            → titik START aplikasi (nyalakan server, daftar semua "pintu")
-│
-├── config/             → pengaturan (port, alamat AI, dll.)
-│
-├── routes/             → daftar "PINTU MASUK" (alamat URL / endpoint)
-│   ├── main.route.ts       → pintu upload & report (punya Wilson)
-│   ├── zone.route.ts       → pintu kelola zona terlarang
-│   └── analysis.route.ts   → pintu analisis (simpan hasil deteksi)
-│
-├── controller/         → "PENERIMA TAMU": nangkap request, atur jawaban
-│   ├── main.controller.ts      → upload (Wilson)
-│   ├── zone.controller.ts      → zona
-│   └── analysis.controller.ts  → analisis
-│
-├── service/            → "PEKERJA": logika inti yang benar-benar mengerjakan
-│   ├── main.service.ts             → kirim foto ke AI (Wilson)
-│   ├── zone.service.ts             → simpan/validasi zona
-│   ├── exif.service.ts             → baca koordinat GPS dari foto
-│   ├── coordinateResolver.service  → pilih koordinat: GPS→OCR→manual
-│   ├── zoneMatcher.service.ts      → cek titik masuk zona mana
-│   └── analysisPersist.service.ts  → simpan pelanggaran ke database
-│
-├── db/                 → koneksi ke database
-│   └── prisma.ts
-│
-└── middlewares/        → "penjaga" yang jalan otomatis (log, error, upload)
-
-prisma/schema.prisma    → "cetak biru" database (bentuk tabel)
-docs/                   → dokumentasi (termasuk file ini)
+  index.ts            -> START aplikasi + daftar semua "pintu" (route)
+  config/             -> pengaturan (port, alamat AI)
+  routes/             -> daftar PINTU MASUK (alamat URL)
+  controller/         -> PENERIMA TAMU (ambil request, balas jawaban)
+  service/            -> PEKERJA (logika inti yang benar-benar mengerjakan)
+  db/prisma.ts        -> koneksi ke database
+  middlewares/        -> penjaga otomatis (log, error, upload)
+prisma/schema.prisma  -> cetak biru database (bentuk tabel)
+docs/                 -> dokumentasi API (buat frontend & tim)
 ```
 
-**Pola penting:** tiap fitur punya 3 lapis — route (pintu) → controller (penerima) → service (pekerja).
-Kalau bingung nyari sesuatu: mulai dari `routes/` buat lihat ada pintu apa aja.
+Pola tiap fitur = 3 lapis: route (pintu) -> controller (penerima) -> service (pekerja).
 
 ---
 
-## 3. Alur Utama (dari foto sampai tersimpan)
+## 4. Penjelasan Syntax (untuk apa)
 
+- `import` / `export`  -> ambil kode dari file lain / bagikan ke file lain
+- `async` / `await`    -> "tunggu sampai selesai" (untuk akses database dsb.)
+- `req`                -> request (data yang masuk dari user)
+- `res`                -> response (jawaban yang dikirim balik)
+- `req.body`           -> isi data yang dikirim user (mis. nama + titik zona)
+- `res.json({...})`    -> balas dalam format JSON
+- `res.status(201)`    -> kode status (200 ok, 201 tercipta, 400 salah input, 404 tidak ada)
+- `try { } catch { }`  -> kalau ada error, ditangkap biar server tidak crash
+- `prisma.zone.create` -> perintah simpan data ke database (Prisma = penerjemah ke MySQL)
+- `router.post(...)`   -> daftarkan alamat + fungsi yang menanganinya
+
+Contoh alur 1 request (buat zona):
 ```
-1. User upload foto
-2. AI (Wilson) deteksi PKL → kasih kotak + tingkat keyakinan
-3. Backend baca koordinat foto (dari GPS di metadata)
-4. Backend cek: koordinat itu masuk zona terlarang?
-   - YA  → catat sebagai PELANGGARAN (status awal: "belum diperiksa")
-   - TIDAK/tanpa lokasi → bukan pelanggaran
-5. Simpan ke database
-6. (Nanti) tampilkan di peta + petugas verifikasi valid/tidak
+POST /api/zones  ->  zone.route  ->  zone.controller.create  ->  zone.service.create  ->  database
+        (user)        (pintu)         (penerima tamu)             (pekerja)              (simpan)
 ```
 
 ---
 
-## 4. Contekan Jawab Pertanyaan (buat demo/tim)
+## 5. Daftar Endpoint (API) yang Sudah Jadi
 
-**T: Backend-nya ngapain?**
-J: Menerima foto, menentukan lokasinya dari GPS, mengecek apakah lokasi itu
-   masuk zona terlarang, lalu menyimpannya sebagai pelanggaran.
-
-**T: Koordinat lokasinya dari mana?**
-J: Utama dari GPS di metadata foto. Kalau nggak ada, dari OCR (baca teks di foto).
-   Kalau nggak ada juga, petugas input manual di peta.
-
-**T: Gimana tau itu pelanggaran?**
-J: Kami gambar "zona terlarang" di peta. Kalau PKL terdeteksi di dalam zona itu,
-   dihitung pelanggaran. Ini pakai perhitungan geometri, bukan tebakan AI.
-
-**T: Kenapa pakai database?**
-J: Biar data pelanggaran tersimpan permanen — bisa dilihat di dashboard, dibuat
-   laporan, dan ditinjau ulang di riwayat.
-
-**T: Statusnya apa aja?**
-J: Belum diperiksa (abu-abu) → petugas tandai Valid (hijau) atau Tidak Valid
-   (disembunyikan). Yang valid bisa ditandai sudah/belum ditindaklanjuti.
+| Fitur | Method + Path | Dokumentasi |
+|-------|---------------|-------------|
+| Kelola zona | GET/POST/PUT/DELETE /api/zones | api/zona.md |
+| Analisis (simpan pelanggaran) | POST /api/analysis | - |
+| Data peta dashboard | GET /api/dashboard/map | api/dashboard.md |
+| Validasi pelanggaran | PATCH /api/violations/:id/status | api/validasi-pelanggaran.md |
+| Tindak lanjut | PATCH /api/violations/:id/follow-up | api/validasi-pelanggaran.md |
+| Daftar pelanggaran aktif | GET /api/violations | api/validasi-pelanggaran.md |
+| Riwayat analisis | GET /api/history | api/riwayat.md |
+| Detail laporan | GET /api/history/:id | api/riwayat.md |
+| Upload (Wilson) | POST /upload | - |
 
 ---
 
-## 5. Pembagian Tugas Tim
+## 6. Status: Sudah & Kurang
 
-- Keanan (kamu): Backend — database, zona, simpan pelanggaran, API
-- Wilson: AI (Python) — deteksi PKL + OCR koordinat, fitur upload
-- Shavelina: Frontend/UI — peta, tampilan, dashboard
+SUDAH: CRUD zona, baca GPS EXIF, cek zona, simpan pelanggaran, endpoint analisis,
+validasi pelanggaran, data dashboard peta, riwayat analisis, parser hasil AI.
+
+KURANG:
+- Laporan + PDF (Req 7) -- data sudah ada, tinggal disusun + generate PDF
+- OCR koordinat -- nunggu Wilson (backend cuma sediakan "slot")
+- Sambungan penuh upload -> analisis -- komponen lengkap, perlu koordinasi Wilson
 
 ---
 
-Catatan: kamu TIDAK perlu paham syntax/kode. Cukup paham alur di dokumen ini.
-Detail teknis biar jadi urusan implementasi; yang penting kamu bisa cerita alurnya.
+## 7. Pembagian Tugas Tim
+- Keanan (kamu): Backend -- database, zona, pelanggaran, API
+- Wilson: AI (Python) -- deteksi PKL + OCR koordinat, upload
+- Shavelina: Frontend -- peta, dashboard, tampilan
+
+Catatan: kamu TIDAK perlu hafal syntax. Cukup paham ALUR di dokumen ini
+supaya bisa mimpin tim & cerita saat demo.

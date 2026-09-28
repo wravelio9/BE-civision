@@ -3,6 +3,7 @@
 import prisma from "../db/prisma.js";
 import { matchZone, type ZoneLike } from "./zoneMatcher.service.js";
 import { isWithinRegion, type LatLon } from "./exif.service.js";
+import { reverseGeocode } from "./geocode.service.js";
 
 // Satu deteksi mentah dari AI (format Wilson).
 export interface RawDetection {
@@ -78,7 +79,8 @@ class AnalysisPersistService {
           continue;
         }
 
-        // Pelanggaran (Req 5.2, 5.4).
+        // Pelanggaran (Req 5.2, 5.4). Isi alamat via reverse geocoding (fallback null).
+        const address = await reverseGeocode(unit.latlon);
         violationData.push({
           zoneId: match.zoneId,
           lat: unit.latlon.lat,
@@ -88,6 +90,7 @@ class AnalysisPersistService {
           coordinateSource: unit.coordinateSource ?? "manual",
           startTimeSec: unit.frameTimestampSec ?? null,
           endTimeSec: unit.frameTimestampSec ?? null,
+          address,
           locationStatus: "matched",
           // status default "unverified", followUp default "belum" (Req 9.1)
         });

@@ -1,16 +1,11 @@
 // Service Riwayat Analisis (Requirement 8): daftar analisis lampau + detail laporan.
-import prisma from "../db/prisma.js";
+// Akses database didelegasikan ke HistoryRepository.
+import HistoryRepository from "../repository/history.repository.js";
 
 class HistoryService {
   // Daftar riwayat, urut terbaru -> terlama (Req 8.3). Sertakan info media & jumlah pelanggaran aktif.
   static async list() {
-    const analyses = await prisma.analysis.findMany({
-      orderBy: { analyzedAt: "desc" },
-      include: {
-        media: true,
-        violations: { where: { status: { not: "invalid" } } },
-      },
-    });
+    const analyses = await HistoryRepository.findAll();
 
     return analyses.map((a) => ({
       id: a.id,
@@ -25,17 +20,7 @@ class HistoryService {
   // Detail satu entri riwayat: laporan lengkap (Req 8.5).
   // null jika tidak ditemukan (Req 8.6 ditangani di controller).
   static async getDetail(id: string) {
-    const analysis = await prisma.analysis.findUnique({
-      where: { id },
-      include: {
-        media: true,
-        violations: {
-          where: { status: { not: "invalid" } },
-          include: { zone: true, annotatedFrames: true },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
+    const analysis = await HistoryRepository.findById(id);
     if (!analysis) return null;
 
     return {

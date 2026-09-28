@@ -1,6 +1,7 @@
 // Service Dashboard (Requirement 6): sediakan data marker pelanggaran + poligon zona
 // untuk ditampilkan di peta oleh frontend.
-import prisma from "../db/prisma.js";
+// Akses database didelegasikan ke DashboardRepository.
+import DashboardRepository from "../repository/dashboard.repository.js";
 
 // Warna pin berdasarkan status validasi (Req 6.3).
 function pinColor(status: string): string {
@@ -12,11 +13,7 @@ class DashboardService {
   // Data untuk peta: marker (pin) + zona. Marker hanya untuk pelanggaran
   // ber-lokasi valid DAN tidak invalid (Req 6.1, 6.4).
   static async getMapData() {
-    const violations = await prisma.violation.findMany({
-      where: { status: { not: "invalid" }, locationStatus: "matched" },
-      include: { annotatedFrames: true, zone: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const violations = await DashboardRepository.findMappableViolations();
 
     const markers = violations.map((v) => ({
       id: v.id,
@@ -37,7 +34,7 @@ class DashboardService {
       },
     }));
 
-    const zonesRaw = await prisma.zone.findMany();
+    const zonesRaw = await DashboardRepository.findAllZones();
     const zones = zonesRaw.map((z) => ({ id: z.id, name: z.name, points: z.points }));
 
     return {

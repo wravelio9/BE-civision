@@ -1,7 +1,7 @@
 // Repository Persist Analisis: membungkus akses database (Prisma) untuk menyimpan
 // Analysis beserta Violation-nya secara atomik. Logika bisnis (matching zona,
 // threshold confidence, reverse geocode) TIDAK di sini — itu di AnalysisPersistService.
-import prisma from "../db/prisma.js";
+import prisma from "../config/prisma.js";
 
 export interface AnalysisCreateData {
   mediaId: string;

@@ -1,6 +1,6 @@
 // Repository Laporan: membungkus akses database (Prisma) untuk data laporan.
 // Pemetaan/format data (tanggal, downloadUrl, dll) TIDAK di sini — itu di ReportService.
-import prisma from "../db/prisma.js";
+import prisma from "../config/prisma.js";
 
 class ReportRepository {
   static countAll() {

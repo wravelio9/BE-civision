@@ -1,6 +1,6 @@
 // Repository Zona: membungkus semua akses database (Prisma) untuk entitas Zone.
 // Logika bisnis/validasi TIDAK di sini — itu tanggung jawab ZoneService.
-import prisma from "../db/prisma.js";
+import prisma from "../config/prisma.js";
 
 class ZoneRepository {
   static count() {

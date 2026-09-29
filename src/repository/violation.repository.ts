@@ -1,6 +1,6 @@
 // Repository Pelanggaran: membungkus semua akses database (Prisma) untuk entitas Violation.
 // Logika bisnis (validasi status, aturan follow-up) TIDAK di sini — itu di ViolationService.
-import prisma from "../db/prisma.js";
+import prisma from "../config/prisma.js";
 
 class ViolationRepository {
   // Daftar pelanggaran aktif (bukan invalid), opsional filter per analysis.

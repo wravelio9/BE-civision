@@ -1,7 +1,7 @@
 // Script SEED: mengisi database dengan data contoh untuk demo/tes.
 // Jalankan: npx tsx prisma/seed.ts
 // Aman dijalankan berulang (data contoh lama dengan tanda [SEED] dibersihkan dulu).
-import prisma from "../src/db/prisma.js";
+import prisma from "../src/config/prisma.js";
 
 const SEED_TAG = "[SEED]";
 

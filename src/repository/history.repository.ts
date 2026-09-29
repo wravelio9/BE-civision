@@ -1,6 +1,6 @@
 // Repository Riwayat Analisis: membungkus akses database (Prisma) untuk entitas Analysis.
 // Pemetaan bentuk response TIDAK di sini — itu di HistoryService.
-import prisma from "../db/prisma.js";
+import prisma from "../config/prisma.js";
 
 class HistoryRepository {
   // Semua analisis, terbaru -> terlama, dengan media & pelanggaran aktif.

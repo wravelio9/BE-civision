@@ -8,6 +8,4 @@ app.post("/upload", upload.array("files", 20), Controller.upload)
 
 app.get("/report", Controller.report)
 
-// app.put()
-
 export default app;

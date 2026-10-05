@@ -1,7 +1,6 @@
 // Parser respons AI (format Wilson) -> unit analisis yang dipakai backend.
 // Mengurai struktur bersarang data.images.results[] menjadi bentuk sederhana.
-import type { RawDetection } from "./analysisPersist.service.js";
-import type { LatLon } from "./exif.service.js";
+import type { RawDetection, LatLon } from "./analysis.service.js";
 
 // Bentuk sebagian respons AI yang kita butuhkan (fleksibel/opsional).
 export interface AiImageResult {

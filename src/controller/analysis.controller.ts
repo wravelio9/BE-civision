@@ -1,9 +1,12 @@
 // Controller Analisis: menyatukan resolver koordinat + persist (Requirement 5).
 // Alur foto: baca EXIF -> (OCR slot) -> manual -> cek zona -> simpan Analysis+Violation.
 import { Request, Response, NextFunction } from "express";
-import { resolveCoordinate, type ResolveInput } from "../service/coordinateResolver.service.js";
-import AnalysisPersistService, { type RawDetection, type PersistAnalysisInput } from "../service/analysisPersist.service.js";
-import type { LatLon } from "../service/exif.service.js";
+import AnalysisService, {
+  type ResolveInput,
+  type RawDetection,
+  type PersistAnalysisInput,
+  type LatLon,
+} from "../service/analysis.service.js";
 
 interface AnalyzeBody {
   mediaId: string;
@@ -33,7 +36,7 @@ class AnalysisController {
       };
       if (photoBuffer) resolveInput.photo = photoBuffer;
 
-      const resolved = await resolveCoordinate(resolveInput);
+      const resolved = await AnalysisService.resolveCoordinate(resolveInput);
 
       const persistInput: PersistAnalysisInput = {
         mediaId: body.mediaId,
@@ -48,7 +51,7 @@ class AnalysisController {
       };
       if (body.detectorMode) persistInput.detectorMode = body.detectorMode;
 
-      const result = await AnalysisPersistService.persist(persistInput);
+      const result = await AnalysisService.persist(persistInput);
 
       return res.status(201).json({
         ok: true,

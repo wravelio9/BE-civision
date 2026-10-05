@@ -1,7 +1,6 @@
 // Controller Laporan (Requirement 7): statistik + tabel + unduh PDF.
 import { Request, Response, NextFunction } from "express";
 import ReportService from "../service/report.service.js";
-import { streamReportPdf } from "../service/pdf.service.js";
 
 class ReportController {
   // GET /api/reports  -> statistik + data tabel laporan
@@ -24,7 +23,7 @@ class ReportController {
       if (!data) {
         return res.status(404).json({ ok: false, message: "Laporan tidak ditemukan." });
       }
-      streamReportPdf(data, res);
+      ReportService.streamReportPdf(data, res);
     } catch (err) {
       next(err);
     }

@@ -1,5 +1,6 @@
-// Service Zona Terlarang: validasi (Requirement 2) + akses database (Prisma).
-import prisma from "../db/prisma.js";
+// Service Zona Terlarang: validasi (Requirement 2) + logika bisnis.
+// Akses database didelegasikan ke ZoneRepository.
+import ZoneRepository from "../repository/zone.repository.js";
 import lineIntersect from "@turf/line-intersect";
 import { lineString, polygon as turfPolygon } from "@turf/helpers";
 
@@ -63,28 +64,26 @@ class ZoneService {
       throw new ZoneError("self_intersecting", "Poligon tidak boleh saling berpotongan.");
     }
     // Batas maksimal 20 zona (Req 2.5)
-    const count = await prisma.zone.count();
+    const count = await ZoneRepository.count();
     if (count >= MAX_ZONES) {
       throw new ZoneError("max_zones_reached", `Maksimal ${MAX_ZONES} zona sudah tercapai.`);
     }
-    return prisma.zone.create({
-      data: { name: input.name.trim(), points: input.points as any },
-    });
+    return ZoneRepository.create({ name: input.name.trim(), points: input.points as any });
   }
 
   // READ all (Req 2.4)
   static async list() {
-    return prisma.zone.findMany({ orderBy: { createdAt: "desc" } });
+    return ZoneRepository.findMany();
   }
 
   // READ one
   static async getById(id: string) {
-    return prisma.zone.findUnique({ where: { id } });
+    return ZoneRepository.findById(id);
   }
 
   // UPDATE (Req 2.7) - validasi ulang bila points diubah
   static async update(id: string, input: Partial<ZoneInput>) {
-    const existing = await prisma.zone.findUnique({ where: { id } });
+    const existing = await ZoneRepository.findById(id);
     if (!existing) return null;
 
     const data: { name?: string; points?: any } = {};
@@ -102,14 +101,14 @@ class ZoneService {
       }
       data.points = input.points as any;
     }
-    return prisma.zone.update({ where: { id }, data });
+    return ZoneRepository.update(id, data);
   }
 
   // DELETE (Req 2.7)
   static async remove(id: string) {
-    const existing = await prisma.zone.findUnique({ where: { id } });
+    const existing = await ZoneRepository.findById(id);
     if (!existing) return null;
-    await prisma.zone.delete({ where: { id } });
+    await ZoneRepository.delete(id);
     return existing;
   }
 }

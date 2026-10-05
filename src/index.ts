@@ -21,7 +21,7 @@ app.get("/health", (req, res) => {
     res.json({ status: 'OK', env: PORT})
 })
 
-app.use(apiRoute);
+app.use("/api", apiRoute);
 app.use("/api", zoneRoute);       // Zona: /api/zones
 app.use("/api", analysisRoute);   // Analisis: /api/analysis
 app.use("/api", violationRoute);  // Validasi pelanggaran: /api/violations

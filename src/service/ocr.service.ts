@@ -2,7 +2,7 @@
 // Untuk foto tanpa GPS EXIF: baca teks koordinat yang "dibakar" di gambar (overlay)
 // lalu ubah menjadi { lat, lon }. Simbol derajat ditulis sebagai \u00b0 agar aman encoding.
 import { createWorker } from "tesseract.js";
-import type { LatLon } from "./analysis.service.js";
+import type { LatLon } from "../interface/analysis.interface.js";
 
 const DEG = "\\u00b0"; // simbol derajat untuk regex
 

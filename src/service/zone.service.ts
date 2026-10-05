@@ -3,19 +3,7 @@
 import ZoneRepository from "../repository/zone.repository.js";
 import lineIntersect from "@turf/line-intersect";
 import { lineString, polygon as turfPolygon } from "@turf/helpers";
-
-export type LngLat = [number, number]; // [lng, lat] mengikuti standar GeoJSON/Leaflet
-
-export interface ZoneInput {
-  name: string;
-  points: LngLat[];
-}
-
-export type ZoneValidationError =
-  | "name_required"
-  | "too_few_points"
-  | "self_intersecting"
-  | "max_zones_reached";
+import type { LngLat, ZoneInput, ZoneValidationError } from "../interface/zone.service.interface.js";
 
 export class ZoneError extends Error {
   code: ZoneValidationError;

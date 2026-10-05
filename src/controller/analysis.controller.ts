@@ -5,20 +5,15 @@
 // Backend TIDAK mendeteksi; backend menerima "detections" yang sudah jadi,
 // lalu menentukan koordinat (EXIF/OCR/manual), mencocokkan zona, dan menyimpan.
 import { Request, Response, NextFunction } from "express";
-import AnalysisService, {
-  type ResolveInput,
-  type PersistAnalysisInput,
-  type RawDetection,
-  type LatLon,
-} from "../service/analysis.service.js";
+import AnalysisService from "../service/analysis.service.js";
 import { readCoordinatesFromImage } from "../service/ocr.service.js";
-
-interface AnalyzeBody {
-  mediaId: string;
-  detections?: RawDetection[];       // hasil deteksi ONNX dari frontend
-  manualLatLon?: LatLon | null;      // koordinat manual (opsional)
-  detectorMode?: string;
-}
+import type {
+  ResolveInput,
+  PersistAnalysisInput,
+  RawDetection,
+  LatLon,
+  AnalyzeBody,
+} from "../interface/analysis.interface.js";
 
 class AnalysisController {
   // POST /api/analysis

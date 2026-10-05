@@ -1,56 +1,39 @@
 // Parser respons Roboflow -> unit analisis yang dipakai backend.
 //
-// CATATAN PENTING: Isi "predictions.predictions[]" dari Roboflow saat ini BELUM
-// kami ketahui (masih kosong di contoh). Parser ini memakai ASUMSI format standar
-// Roboflow object detection:
-//   { x, y, width, height, confidence, class }   (x,y = titik TENGAH box)
-// Begitu format asli didapat, sesuaikan fungsi mapPrediction() di bawah saja.
+// Struktur asli Roboflow (dikonfirmasi dari response nyata):
+//   { outputs: [ { annotated_image: {type:"base64", value}, predictions: { image, predictions: [...] } } ] }
+// Catatan: isi predictions[] masih kosong saat model belum mendeteksi objek.
+// Asumsi format tiap prediction (standar Roboflow): { x, y, width, height, confidence, class }
 import type { RawDetection, LatLon } from "./analysis.service.js";
 
-// ---- Bentuk respons Roboflow (sebagian yang dibutuhkan) ----
 export interface RoboflowPrediction {
-  x?: number;          // titik tengah X (piksel)
-  y?: number;          // titik tengah Y (piksel)
-  width?: number;      // lebar box
-  height?: number;     // tinggi box
-  confidence?: number; // 0..1
-  class?: string;      // mis. "gerobak"
+  x?: number;          // titik tengah X
+  y?: number;          // titik tengah Y
+  width?: number;
+  height?: number;
+  confidence?: number;
+  class?: string;
 }
 
 export interface RoboflowOutput {
-  annotated_image?: { type?: string; value?: string }; // base64 gambar beranotasi
+  annotated_image?: { type?: string; value?: string };
   predictions?: {
-    image?: { width?: number; height?: number };
+    image?: { width?: number | null; height?: number | null };
     predictions?: RoboflowPrediction[];
   };
 }
 
-export interface RoboflowResult {
-  filename?: string;
-  mimetype?: string;
-  result?: { outputs?: RoboflowOutput[] };
-}
-
 export interface RoboflowResponse {
-  success?: boolean;
-  data?: {
-    total?: number;
-    results?: RoboflowResult[];
-    errors?: unknown[];
-  };
+  outputs?: RoboflowOutput[];
 }
 
-// Hasil parse per foto.
 export interface ParsedImageUnit {
-  filename: string | null;
   detections: RawDetection[];
-  annotatedImageBase64: string | null; // gambar beranotasi (base64) dari Roboflow
-  ocrLatLon: LatLon | null;            // diisi oleh OCR backend (bukan dari Roboflow)
+  annotatedImageBase64: string | null;
+  ocrLatLon: LatLon | null;
 }
 
-// Konversi satu prediction Roboflow -> RawDetection backend.
-// Roboflow: x,y = titik tengah; backend: bbox pakai sudut (x1,y1,x2,y2).
-// >>> Kalau format asli berbeda, cukup ubah fungsi ini. <<<
+// Konversi satu prediction Roboflow (titik tengah) -> RawDetection (sudut).
 function mapPrediction(p: RoboflowPrediction): RawDetection | null {
   if (
     typeof p.x !== "number" || typeof p.y !== "number" ||
@@ -58,37 +41,34 @@ function mapPrediction(p: RoboflowPrediction): RawDetection | null {
   ) {
     return null;
   }
-  const x1 = p.x - p.width / 2;
-  const y1 = p.y - p.height / 2;
-  const x2 = p.x + p.width / 2;
-  const y2 = p.y + p.height / 2;
   return {
     label: p.class ?? "gerobak",
     confidence: typeof p.confidence === "number" ? p.confidence : 0,
-    bbox: { x1, y1, x2, y2 },
+    bbox: {
+      x1: p.x - p.width / 2,
+      y1: p.y - p.height / 2,
+      x2: p.x + p.width / 2,
+      y2: p.y + p.height / 2,
+    },
   };
 }
 
-// Ambil daftar hasil foto dari respons Roboflow (aman terhadap field hilang).
-export function parseRoboflowResults(res: RoboflowResponse): ParsedImageUnit[] {
-  const results = res?.data?.results ?? [];
-  return results.map((r) => {
-    const output = r.result?.outputs?.[0];
-    const rawPreds = output?.predictions?.predictions ?? [];
-    const detections = rawPreds
-      .map(mapPrediction)
-      .filter((d): d is RawDetection => d !== null);
+// Ambil hasil dari respons Roboflow (struktur asli: root.outputs[0]).
+export function parseRoboflowResponse(res: RoboflowResponse): ParsedImageUnit {
+  const output = res?.outputs?.[0];
+  const rawPreds = output?.predictions?.predictions ?? [];
+  const detections = rawPreds
+    .map(mapPrediction)
+    .filter((d): d is RawDetection => d !== null);
 
-    return {
-      filename: r.filename ?? null,
-      detections,
-      annotatedImageBase64:
-        output?.annotated_image?.type === "base64"
-          ? output.annotated_image.value ?? null
-          : null,
-      ocrLatLon: null, // koordinat diisi oleh OCR backend, bukan Roboflow
-    };
-  });
+  return {
+    detections,
+    annotatedImageBase64:
+      output?.annotated_image?.type === "base64"
+        ? output.annotated_image.value ?? null
+        : null,
+    ocrLatLon: null, // koordinat dari OCR backend, bukan Roboflow
+  };
 }
 
-export default { parseRoboflowResults };
+export default { parseRoboflowResponse };

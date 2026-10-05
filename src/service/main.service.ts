@@ -1,85 +1,90 @@
+// Service Upload: meneruskan gambar ke Roboflow Workflow (deteksi "gerobak")
+// dan mengembalikan hasil JSON-nya. Logika diambil dari model/gerobak.js.
+// API key HANYA ada di backend (proxy), tidak pernah dikirim ke FE.
 import axios from "axios";
-import FormData from "form-data"
 import config from "../config/config.js";
 
-const AI_SERVICE_URL = config.aiServiceUrl;
+export interface UploadFileResult {
+  filename: string;
+  mimetype: string;
+  result: unknown; // JSON mentah dari Roboflow Workflow
+}
+
+export interface UploadFileError {
+  filename: string;
+  error: string;
+  detail?: unknown;
+}
+
+export class UploadError extends Error {
+  status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
 
 class Service {
-    // Kirim sekumpulan gambar ke AI /predict-image dalam satu request.
-    static async uploadImages(files: any[], conf: number) {
-        const form = new FormData();
+  // Kirim satu gambar (base64) ke Roboflow Workflow, kembalikan JSON hasilnya.
+  static async detectGerobak(buffer: Buffer): Promise<unknown> {
+    const response = await axios.post(
+      config.roboflowWorkflowUrl,
+      {
+        inputs: {
+          image: { type: "base64", value: buffer.toString("base64") },
+          classes: config.roboflowClasses,
+        },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.roboflowApiKey}`,
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        timeout: 120000,
+      },
+    );
+    return response.data;
+  }
 
-        for (const file of files) {
-            form.append("files", file.buffer, {
-                filename: file.originalname,
-                contentType: file.mimetype,
-            });
-        }
+  // Proses semua file gambar. Satu file gagal tidak menggagalkan file lain.
+  static async upload(files: Express.Multer.File[]) {
+    if (!config.roboflowApiKey) {
+      throw new UploadError("AI_API_KEY belum diset di environment.", 500);
+    }
 
-        // Teruskan ke AI service. conf opsional (default 0.5 di sisi AI).
-        const aiResponse = await axios.post(`${AI_SERVICE_URL}/predict-image`, form, {
-            params: { conf },
-            headers: form.getHeaders(),
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-            timeout: 120000, // beri waktu lebih untuk batch besar
+    const images = files.filter((f) => (f.mimetype || "").startsWith("image/"));
+    const skipped = files.filter((f) => !(f.mimetype || "").startsWith("image/"));
+
+    if (images.length === 0) {
+      throw new UploadError("Tidak ada file gambar. Deteksi gerobak hanya mendukung gambar.");
+    }
+
+    const settled = await Promise.allSettled(images.map((f) => this.detectGerobak(f.buffer)));
+
+    const results: UploadFileResult[] = [];
+    const errors: UploadFileError[] = skipped.map((f) => ({
+      filename: f.originalname,
+      error: "Tipe file tidak didukung (hanya gambar).",
+    }));
+
+    settled.forEach((s, i) => {
+      const file = images[i]!;
+      if (s.status === "fulfilled") {
+        results.push({ filename: file.originalname, mimetype: file.mimetype, result: s.value });
+      } else {
+        const err: any = s.reason;
+        errors.push({
+          filename: file.originalname,
+          error: err?.response ? "Roboflow mengembalikan error" : "Gagal menghubungi Roboflow",
+          detail: err?.response?.data ?? err?.message,
         });
+      }
+    });
 
-        // aiResponse.data berisi { success, conf, results: [...], errors: [...] }
-        return aiResponse.data;
-    }
-
-    // Kirim satu video ke AI /predict-video.
-    // static async uploadVideo(buffer: any, filename: any, mimetype: any, conf: any) {
-    //     const form = new FormData();
-    //     // Field name harus "file" agar cocok dengan parameter di app.py (/predict-video).
-    //     form.append("file", buffer, { filename, contentType: mimetype });
-
-    //     const url = `${AI_SERVICE_URL}/predict-video`;
-
-    //     const response = await axios.post(url, form, {
-    //         params: { conf },
-    //         headers: form.getHeaders(),
-    //         // Video bisa besar & pemrosesan lama, beri ruang.
-    //         maxContentLength: Infinity,
-    //         maxBodyLength: Infinity,
-    //         timeout: 15 * 60 * 1000, // 15 menit
-    //     });
-
-    //     return response.data;
-    // }
-
-    // Router: pisahkan file berdasarkan mimetype lalu teruskan ke endpoint AI yang sesuai.
-    // Gambar dikirim sekaligus (batch), video dikirim satu per satu.
-    static async upload(files: any[], conf: number) {
-        const images = files.filter((f) => (f.mimetype || "").startsWith("image/"));
-        // const videos = files.filter((f) => (f.mimetype || "").startsWith("video/"));
-
-        const result: { images?: any; videos?: any[] } = {};
-
-        if (images.length > 0) {
-            result.images = await this.uploadImages(images, conf);
-        }
-
-        // if (videos.length > 0) {
-        //     result.videos = [];
-        //     for (const video of videos) {
-        //         const data = await this.uploadVideo(
-        //             video.buffer,
-        //             video.originalname,
-        //             video.mimetype,
-        //             conf,
-        //         );
-        //         result.videos.push({ filename: video.originalname, data });
-        //     }
-        // }
-
-        return result;
-    }
-
-    static async report() {
-
-    }
+    return { total: files.length, succeeded: results.length, failed: errors.length, results, errors };
+  }
 }
 
 export default Service

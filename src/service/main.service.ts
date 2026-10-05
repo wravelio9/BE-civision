@@ -1,20 +1,10 @@
-// Service Upload: meneruskan gambar ke Roboflow Workflow (deteksi "gerobak")
-// dan mengembalikan hasil JSON-nya. Logika diambil dari model/gerobak.js.
-// API key HANYA ada di backend (proxy), tidak pernah dikirim ke FE.
-import axios from "axios";
-import config from "../config/config.js";
-
-export interface UploadFileResult {
-  filename: string;
-  mimetype: string;
-  result: unknown; // JSON mentah dari Roboflow Workflow
-}
-
-export interface UploadFileError {
-  filename: string;
-  error: string;
-  detail?: unknown;
-}
+// Service Upload: simpan file media ke storage + buat record MediaFile.
+// Deteksi gerobak TIDAK di sini lagi (pindah ke frontend ONNX). Backend hanya
+// menyimpan media, lalu frontend mengirim mediaId + detections ke /api/analysis.
+import fs from "node:fs/promises";
+import path from "node:path";
+import crypto from "node:crypto";
+import prisma from "../config/prisma.js";
 
 export class UploadError extends Error {
   status: number;
@@ -24,67 +14,65 @@ export class UploadError extends Error {
   }
 }
 
+const STORAGE_DIR = path.resolve(process.cwd(), "storage", "media");
+
+export interface SavedMedia {
+  id: string;
+  originalName: string;
+  mediaType: "photo" | "video";
+  sizeBytes: number;
+  storagePath: string;
+}
+
 class Service {
-  // Kirim satu gambar (base64) ke Roboflow Workflow, kembalikan JSON hasilnya.
-  static async detectGerobak(buffer: Buffer): Promise<unknown> {
-    const response = await axios.post(
-      config.roboflowWorkflowUrl,
-      {
-        inputs: {
-          image: { type: "base64", value: buffer.toString("base64") },
-          classes: config.roboflowClasses,
-        },
+  // Simpan satu file ke storage + buat record MediaFile di DB.
+  static async saveOne(file: Express.Multer.File): Promise<SavedMedia> {
+    const mimetype = file.mimetype || "";
+    const mediaType: "photo" | "video" = mimetype.startsWith("video/") ? "video" : "photo";
+
+    await fs.mkdir(STORAGE_DIR, { recursive: true });
+    const id = crypto.randomUUID();
+    const ext = path.extname(file.originalname) || "";
+    const storagePath = path.join("storage", "media", `${id}${ext}`);
+    await fs.writeFile(path.resolve(process.cwd(), storagePath), file.buffer);
+
+    const media = await prisma.mediaFile.create({
+      data: {
+        originalName: file.originalname.slice(0, 255),
+        mediaType,
+        sizeBytes: file.size,
+        storagePath,
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.roboflowApiKey}`,
-        },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-        timeout: 120000,
-      },
-    );
-    return response.data;
-  }
-
-  // Proses semua file gambar. Satu file gagal tidak menggagalkan file lain.
-  static async upload(files: Express.Multer.File[]) {
-    if (!config.roboflowApiKey) {
-      throw new UploadError("AI_API_KEY belum diset di environment.", 500);
-    }
-
-    const images = files.filter((f) => (f.mimetype || "").startsWith("image/"));
-    const skipped = files.filter((f) => !(f.mimetype || "").startsWith("image/"));
-
-    if (images.length === 0) {
-      throw new UploadError("Tidak ada file gambar. Deteksi gerobak hanya mendukung gambar.");
-    }
-
-    const settled = await Promise.allSettled(images.map((f) => this.detectGerobak(f.buffer)));
-
-    const results: UploadFileResult[] = [];
-    const errors: UploadFileError[] = skipped.map((f) => ({
-      filename: f.originalname,
-      error: "Tipe file tidak didukung (hanya gambar).",
-    }));
-
-    settled.forEach((s, i) => {
-      const file = images[i]!;
-      if (s.status === "fulfilled") {
-        results.push({ filename: file.originalname, mimetype: file.mimetype, result: s.value });
-      } else {
-        const err: any = s.reason;
-        errors.push({
-          filename: file.originalname,
-          error: err?.response ? "Roboflow mengembalikan error" : "Gagal menghubungi Roboflow",
-          detail: err?.response?.data ?? err?.message,
-        });
-      }
     });
 
-    return { total: files.length, succeeded: results.length, failed: errors.length, results, errors };
+    return {
+      id: media.id,
+      originalName: media.originalName,
+      mediaType: media.mediaType as "photo" | "video",
+      sizeBytes: media.sizeBytes,
+      storagePath: media.storagePath,
+    };
+  }
+
+  // Simpan banyak file. Satu gagal tidak menggagalkan yang lain.
+  static async upload(files: Express.Multer.File[]) {
+    const images = files.filter((f) => (f.mimetype || "").startsWith("image/"));
+    if (images.length === 0) {
+      throw new UploadError("Tidak ada file gambar yang diunggah.");
+    }
+
+    const saved: SavedMedia[] = [];
+    const errors: { filename: string; error: string }[] = [];
+    for (const f of images) {
+      try {
+        saved.push(await Service.saveOne(f));
+      } catch (e: any) {
+        errors.push({ filename: f.originalname, error: e?.message ?? "Gagal menyimpan" });
+      }
+    }
+
+    return { total: images.length, succeeded: saved.length, failed: errors.length, media: saved, errors };
   }
 }
 
-export default Service
+export default Service;

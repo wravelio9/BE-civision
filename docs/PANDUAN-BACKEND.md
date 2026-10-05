@@ -73,7 +73,7 @@ Pola tiap fitur = 3 lapis: route (pintu) -> controller (penerima) -> service (pe
 - `res.json({...})`    -> balas dalam format JSON
 - `res.status(201)`    -> kode status (200 ok, 201 tercipta, 400 salah input, 404 tidak ada)
 - `try { } catch { }`  -> kalau ada error, ditangkap biar server tidak crash
-- `prisma.zone.create` -> perintah simpan data ke database (Prisma = penerjemah ke MySQL)
+- `prisma.zone.create` -> perintah simpan data ke database (Prisma = penerjemah ke PostgreSQL di Supabase)
 - `router.post(...)`   -> daftarkan alamat + fungsi yang menanganinya
 
 Contoh alur 1 request (buat zona):

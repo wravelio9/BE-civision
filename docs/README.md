@@ -21,5 +21,5 @@ Semua ada di folder [`api/`](api/):
 ## Catatan
 - Dokumen spec lengkap (requirements, design, tasks) ada terpisah di folder
   `.kiro/specs/pkl-detection-report/` (bukan di sini, biar folder docs ringkas).
-- Untuk menjalankan backend: nyalakan MySQL (XAMPP) lalu `npm run dev`.
+- Untuk menjalankan backend: isi `DATABASE_URL` di `.env` dengan connection string Supabase (PostgreSQL), lalu `npm run dev`.
 - Untuk mengisi data contoh saat demo/tes: `npx tsx prisma/seed.ts`.

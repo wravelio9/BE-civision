@@ -7,22 +7,9 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Response } from "express";
 import ReportRepository from "../repository/report.repository.js";
+import type { ReportData } from "../interface/report.service.interface.js";
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
-
-export interface ReportData {
-  id: string;
-  location: string;
-  coordinate: { lat: number; lng: number };
-  date: string;
-  timestamp: string;
-  mediaName: string | null;
-  zoneName: string | null;
-  status: string;
-  confidence: number;
-  evidencePath: string | null;
-  targetAgency: string;
-}
 
 // Render laporan langsung ke response (di-stream sebagai file PDF unduhan).
 export function streamReportPdf(data: ReportData, res: Response) {

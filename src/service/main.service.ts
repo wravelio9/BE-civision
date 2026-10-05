@@ -5,6 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import prisma from "../config/prisma.js";
+import type { SavedMedia } from "../interface/main.service.interface.js";
 
 export class UploadError extends Error {
   status: number;
@@ -15,14 +16,6 @@ export class UploadError extends Error {
 }
 
 const STORAGE_DIR = path.resolve(process.cwd(), "storage", "media");
-
-export interface SavedMedia {
-  id: string;
-  originalName: string;
-  mediaType: "photo" | "video";
-  sizeBytes: number;
-  storagePath: string;
-}
 
 class Service {
   // Simpan satu file ke storage + buat record MediaFile di DB.

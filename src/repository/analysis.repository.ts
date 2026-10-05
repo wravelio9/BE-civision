@@ -2,13 +2,7 @@
 // Analysis beserta Violation-nya secara atomik. Logika bisnis (matching zona,
 // threshold confidence, reverse geocode) TIDAK di sini — itu di AnalysisService.
 import prisma from "../config/prisma.js";
-
-export interface AnalysisCreateData {
-  mediaId: string;
-  detectorMode: string;
-  photoCount: number;
-  videoDuration: number;
-}
+import type { AnalysisCreateData } from "../interface/analysis.interface.js";
 
 class AnalysisRepository {
   // Ambil semua zona (dipakai untuk point-in-polygon di service).

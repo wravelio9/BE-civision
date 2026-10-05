@@ -10,37 +10,23 @@ import exifr from "exifr";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point as turfPoint, polygon as turfPolygon } from "@turf/helpers";
 import AnalysisRepository from "../repository/analysis.repository.js";
-
-// ============================================================================
-// Tipe bersama
-// ============================================================================
-
-export interface LatLon {
-  lat: number;
-  lon: number;
-}
-
-export type CoordinateSource = "gps_exif" | "ocr" | "manual";
-
-export type LngLat = [number, number]; // [lng, lat]
+import type {
+  LatLon,
+  LngLat,
+  ExifResult,
+  RegionBounds,
+  ResolvedCoordinate,
+  ResolveInput,
+  ZoneLike,
+  MatchResult,
+  PersistAnalysisInput,
+  PersistResult,
+} from "../interface/analysis.interface.js";
 
 // ============================================================================
 // EXIF (Requirement 3.1, 3.7)
+// Batas wilayah target (region_bounds): default sekitar Indonesia, bisa dioverride via env.
 // ============================================================================
-
-export interface ExifResult {
-  latlon: LatLon | null;
-  present: boolean; // true jika GPS EXIF valid ditemukan
-}
-
-// Batas wilayah target (region_bounds). Default: sekitar Indonesia.
-// Bisa dioverride lewat environment variable bila perlu.
-export interface RegionBounds {
-  latMin: number;
-  latMax: number;
-  lonMin: number;
-  lonMax: number;
-}
 
 export const DEFAULT_REGION_BOUNDS: RegionBounds = {
   latMin: parseFloat(process.env.REGION_LAT_MIN || "-11.5"),
@@ -88,17 +74,6 @@ export function isWithinRegion(
 // Coordinate Resolver (Requirement 3): 1) GPS EXIF -> 2) OCR -> 3) manual
 // ============================================================================
 
-export interface ResolvedCoordinate {
-  latlon: LatLon | null;
-  source: CoordinateSource | null;
-}
-
-export interface ResolveInput {
-  photo?: Buffer | string;          // berkas foto untuk dibaca EXIF-nya
-  ocrLatLon?: LatLon | null;        // koordinat hasil OCR
-  manualLatLon?: LatLon | null;     // koordinat input manual
-}
-
 // Urutan: EXIF -> OCR -> manual. Yang pertama tersedia dipakai.
 export async function resolveCoordinate(input: ResolveInput): Promise<ResolvedCoordinate> {
   // 1) GPS EXIF (sumber utama foto)
@@ -122,18 +97,6 @@ export async function resolveCoordinate(input: ResolveInput): Promise<ResolvedCo
 // ============================================================================
 // Zone Matcher (Requirement 5.1, 5.2, 5.3) - deterministik, bukan AI
 // ============================================================================
-
-export interface ZoneLike {
-  id: string;
-  name: string;
-  points: LngLat[]; // ring poligon (urutan simpul)
-}
-
-export interface MatchResult {
-  inside: boolean;
-  zoneId: string | null;
-  zoneName: string | null;
-}
 
 // Ubah daftar titik zona menjadi ring tertutup.
 function toClosedRing(points: LngLat[]): LngLat[] {
@@ -203,36 +166,6 @@ export async function reverseGeocode(latlon: LatLon): Promise<string | null> {
 // ============================================================================
 // Persist Analysis + Violation (Requirement 5.2, 5.3, 5.4, 4.7)
 // ============================================================================
-
-// Satu deteksi mentah (format Wilson).
-export interface RawDetection {
-  label: string;
-  confidence: number;
-  bbox: { x1: number; y1: number; x2: number; y2: number };
-}
-
-// Input untuk satu unit gambar (1 foto = 1 unit).
-export interface AnalysisUnitInput {
-  detections: RawDetection[];
-  latlon: LatLon | null;              // koordinat dari EXIF/OCR/manual (null jika gagal semua)
-  coordinateSource: CoordinateSource | null;
-  frameTimestampSec?: number | null;  // untuk video (null untuk foto)
-}
-
-export interface PersistAnalysisInput {
-  mediaId: string;
-  detectorMode?: string;              // default "proxy"
-  units: AnalysisUnitInput[];         // foto = 1 unit; video = banyak unit
-  photoCount?: number;
-  videoDuration?: number;
-}
-
-export interface PersistResult {
-  analysisId: string;
-  totalDetections: number;
-  totalViolations: number;
-  unknownLocation: number;            // deteksi valid tapi tanpa lokasi valid
-}
 
 const CONFIDENCE_THRESHOLD = 0.5; // Requirement 4.3
 

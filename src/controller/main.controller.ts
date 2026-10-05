@@ -7,12 +7,13 @@
 // Lalu balikin ringkasan. Deteksi gerobak dilakukan di FE (ONNX), bukan di sini.
 import { Request, Response, NextFunction } from "express";
 import Service, { UploadError } from "../service/main.service.js";
-import AnalysisService, {
-  type ResolveInput,
-  type PersistAnalysisInput,
-  type RawDetection,
-  type LatLon,
-} from "../service/analysis.service.js";
+import AnalysisService from "../service/analysis.service.js";
+import type {
+  ResolveInput,
+  PersistAnalysisInput,
+  RawDetection,
+  LatLon,
+} from "../interface/analysis.interface.js";
 import { readCoordinatesFromImage } from "../service/ocr.service.js";
 
 class Controller {

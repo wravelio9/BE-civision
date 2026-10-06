@@ -3,7 +3,12 @@ import upload from "../middlewares/upload.js"
 import Controller from "../controller/upload.controller.js"
 const app = express.Router()
 
-// Satu endpoint upload untuk gambar & video. Field name: "files" (bisa banyak).
+// Upload lewat backend (multipart, field "files"). Di Vercel dibatasi 4.5 MB per request.
 app.post("/upload", upload.array("files", 20), Controller.upload)
+
+// Upload langsung ke Supabase Storage (untuk file besar, tanpa batas 4.5 MB Vercel):
+// 1) minta signed URL, 2) FE upload ke Supabase, 3) confirm -> record MediaFile.
+app.post("/upload/signed-url", Controller.signedUrl)
+app.post("/upload/confirm", Controller.confirm)
 
 export default app;

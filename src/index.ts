@@ -1,8 +1,12 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors"
+import dns from "node:dns";
 
 dotenv.config();
+// Utamakan IPv4 saat resolve DNS. Di jaringan dengan IPv6 bermasalah (NAT64),
+// fetch ke Supabase bisa gagal "fetch failed / ECONNRESET".
+dns.setDefaultResultOrder("ipv4first");
 import uploadRoute from "./routes/upload.route.js";
 import zoneRoute from "./routes/zone.route.js";
 import analysisRoute from "./routes/analysis.route.js";

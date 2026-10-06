@@ -6,8 +6,28 @@
 import path from "node:path";
 import crypto from "node:crypto";
 import prisma from "../config/prisma.js";
+import config from "../config/config.js";
 import { getSupabase, SUPABASE_BUCKET } from "../config/supabase.js";
-import type { SavedMedia } from "../interface/upload.interface.js";
+import type {
+  SavedMedia,
+  SignedUploadRequest,
+  SignedUploadResult,
+  ConfirmUploadRequest,
+} from "../interface/upload.interface.js";
+
+// Path objek yang dibuat backend: <uuid><ext>. Confirm hanya menerima pola ini,
+// supaya FE tidak bisa mendaftarkan objek sembarang di bucket.
+const OBJECT_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\.[a-z0-9]{1,10})?$/i;
+
+function isMediaMime(mimetype: string): boolean {
+  return mimetype.startsWith("image/") || mimetype.startsWith("video/");
+}
+
+// Ekstensi aman dari nama file: huruf/angka saja, maks 10 karakter.
+function safeExt(filename: string): string {
+  const ext = path.extname(filename || "").toLowerCase();
+  return /^\.[a-z0-9]{1,10}$/.test(ext) ? ext : "";
+}
 
 export class UploadError extends Error {
   status: number;
@@ -51,6 +71,88 @@ class Service {
         mediaType,
         sizeBytes: file.size,
         storagePath: publicUrl, // simpan URL publik agar FE langsung bisa pakai
+      },
+    });
+
+    return {
+      id: media.id,
+      originalName: media.originalName,
+      mediaType: media.mediaType as "photo" | "video",
+      sizeBytes: media.sizeBytes,
+      storagePath: media.storagePath,
+    };
+  }
+
+  // Langkah 1 (upload langsung): buat signed upload URL ke Supabase Storage.
+  // File TIDAK lewat backend, jadi tidak kena batas body Vercel (4.5 MB).
+  static async createSignedUpload(input: SignedUploadRequest): Promise<SignedUploadResult> {
+    const filename = typeof input?.filename === "string" ? input.filename.trim() : "";
+    const contentType = typeof input?.contentType === "string" ? input.contentType : "";
+    const sizeBytes = Number(input?.sizeBytes);
+
+    if (!filename) throw new UploadError("filename wajib diisi.");
+    if (!isMediaMime(contentType)) throw new UploadError("contentType harus image/* atau video/*.");
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      throw new UploadError("sizeBytes harus angka lebih dari 0.");
+    }
+    if (sizeBytes > config.maxVideoBytes) {
+      throw new UploadError(`Ukuran file melebihi batas ${config.maxVideoBytes} byte.`, 413);
+    }
+
+    const objectPath = `${crypto.randomUUID()}${safeExt(filename)}`;
+    const { data, error } = await getSupabase()
+      .storage.from(SUPABASE_BUCKET)
+      .createSignedUploadUrl(objectPath);
+
+    if (error || !data) {
+      throw new UploadError(`Gagal membuat signed upload URL: ${error?.message ?? "unknown"}`, 502);
+    }
+
+    return {
+      path: data.path,
+      token: data.token,
+      signedUrl: data.signedUrl,
+      bucket: SUPABASE_BUCKET,
+      maxBytes: config.maxVideoBytes,
+    };
+  }
+
+  // Langkah 2 (upload langsung): FE sudah upload ke Supabase, catat MediaFile di DB.
+  // Ukuran & tipe diambil dari metadata Supabase, bukan dipercaya dari FE.
+  static async confirmUpload(input: ConfirmUploadRequest): Promise<SavedMedia> {
+    const objectPath = typeof input?.path === "string" ? input.path.trim() : "";
+    const originalName =
+      typeof input?.originalName === "string" && input.originalName.trim()
+        ? input.originalName.trim().slice(0, 255)
+        : objectPath;
+
+    if (!OBJECT_PATH_RE.test(objectPath)) {
+      throw new UploadError("path tidak valid. Gunakan path dari /api/upload/signed-url.");
+    }
+
+    const supabase = getSupabase();
+    const { data: info, error } = await supabase.storage.from(SUPABASE_BUCKET).info(objectPath);
+    if (error || !info) {
+      throw new UploadError("File belum ada di storage. Upload ke signedUrl dulu.", 404);
+    }
+
+    const contentType = info.contentType ?? "";
+    if (!isMediaMime(contentType)) {
+      throw new UploadError("File di storage bukan gambar atau video.");
+    }
+    const sizeBytes = Number(info.size ?? 0);
+    if (sizeBytes > config.maxVideoBytes) {
+      throw new UploadError(`Ukuran file melebihi batas ${config.maxVideoBytes} byte.`, 413);
+    }
+
+    const { data: pub } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
+
+    const media = await prisma.mediaFile.create({
+      data: {
+        originalName,
+        mediaType: contentType.startsWith("video/") ? "video" : "photo",
+        sizeBytes,
+        storagePath: pub?.publicUrl ?? objectPath,
       },
     });
 

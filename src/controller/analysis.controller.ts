@@ -28,7 +28,18 @@ class AnalysisController {
         return res.status(400).json({ ok: false, message: "mediaId wajib diisi." });
       }
 
-      const photoBuffer = (req as any).file?.buffer as Buffer | undefined;
+      // mediaId harus ada di DB (hindari error foreign key 500).
+      const media = await AnalysisService.getMedia(body.mediaId);
+      if (!media) {
+        return res.status(404).json({ ok: false, message: "mediaId tidak ditemukan." });
+      }
+
+      // Foto boleh dikirim langsung (multipart "photo"), atau diambil dari storage
+      // berdasarkan mediaId (untuk file besar yang di-upload langsung ke Supabase).
+      let photoBuffer = (req as any).file?.buffer as Buffer | undefined;
+      if (!photoBuffer && media.mediaType === "photo") {
+        photoBuffer = (await AnalysisService.loadMediaBuffer(media.storagePath)) ?? undefined;
+      }
 
       // Deteksi datang dari frontend (ONNX). Default [] bila tidak ada.
       const detections: RawDetection[] = Array.isArray(body.detections) ? body.detections : [];

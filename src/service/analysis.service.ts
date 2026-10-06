@@ -10,6 +10,7 @@ import exifr from "exifr";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point as turfPoint, polygon as turfPolygon } from "@turf/helpers";
 import AnalysisRepository from "../repository/analysis.repository.js";
+import { getSupabase, SUPABASE_BUCKET } from "../config/supabase.js";
 import type {
   LatLon,
   LngLat,
@@ -176,6 +177,33 @@ class AnalysisService {
   static isPointInZone = isPointInZone;
   static matchZone = matchZone;
   static reverseGeocode = reverseGeocode;
+
+  // Ambil record MediaFile; null jika mediaId tidak ada.
+  static async getMedia(mediaId: string) {
+    return AnalysisRepository.findMediaById(mediaId);
+  }
+
+  // Ambil isi file media dari Supabase Storage (untuk baca EXIF/OCR) bila FE
+  // tidak mengirim foto di request. storagePath berisi URL publik Supabase.
+  // Mengembalikan null bila gagal; EXIF/OCR hanya sumber koordinat, bukan wajib.
+  static async loadMediaBuffer(storagePath: string): Promise<Buffer | null> {
+    try {
+      const marker = `/storage/v1/object/public/${SUPABASE_BUCKET}/`;
+      const idx = storagePath.indexOf(marker);
+      const objectPath =
+        idx >= 0 ? decodeURIComponent(storagePath.slice(idx + marker.length)) : storagePath;
+
+      const { data, error } = await getSupabase().storage.from(SUPABASE_BUCKET).download(objectPath);
+      if (error || !data) {
+        console.warn("[analysis] gagal download media:", error?.message ?? "no data");
+        return null;
+      }
+      return Buffer.from(await data.arrayBuffer());
+    } catch (err: any) {
+      console.warn("[analysis] gagal download media:", err?.message ?? err);
+      return null;
+    }
+  }
 
   // Simpan satu Analysis beserta Violation-nya secara atomik.
   static async persist(input: PersistAnalysisInput): Promise<PersistResult> {

@@ -10,6 +10,11 @@ class AnalysisRepository {
     return prisma.zone.findMany();
   }
 
+  // Ambil record MediaFile (cek mediaId valid + lokasi file di storage).
+  static findMediaById(id: string) {
+    return prisma.mediaFile.findUnique({ where: { id } });
+  }
+
   // Buat Analysis + semua Violation-nya dalam satu transaksi (atomik, Req 4.7).
   static async createAnalysisWithViolations(
     analysisData: AnalysisCreateData,

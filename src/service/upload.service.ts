@@ -6,7 +6,7 @@
 import path from "node:path";
 import crypto from "node:crypto";
 import prisma from "../config/prisma.js";
-import supabase, { SUPABASE_BUCKET } from "../config/supabase.js";
+import { getSupabase, SUPABASE_BUCKET } from "../config/supabase.js";
 import type { SavedMedia } from "../interface/upload.interface.js";
 
 export class UploadError extends Error {
@@ -27,6 +27,7 @@ class Service {
     const id = crypto.randomUUID();
     const ext = path.extname(file.originalname) || "";
     const objectPath = `${id}${ext}`;
+    const supabase = getSupabase();
 
     // Upload ke bucket Supabase.
     const { error: uploadErr } = await supabase.storage

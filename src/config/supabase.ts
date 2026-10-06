@@ -1,27 +1,30 @@
 // Helper client Supabase Storage (service role) untuk upload media.
-// Dipakai saat backend jalan di serverless (Vercel) yang filesystem-nya read-only.
-// Env yang dibutuhkan (.env):
+// Dipakai karena backend jalan di serverless (Vercel) yang filesystem-nya read-only.
+// Env (.env lokal DAN Environment Variables di Vercel):
 //   SUPABASE_URL              = https://<project-ref>.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY = service_role key (JANGAN diekspos ke frontend)
 //   SUPABASE_BUCKET           = nama bucket (default "media")
+//
+// Client dibuat LAZY (saat pertama dipakai), bukan saat modul di-load. Kalau env
+// kosong, hanya upload yang gagal dengan pesan jelas; endpoint lain tetap hidup.
 import "dotenv/config";
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!url || !serviceKey) {
-  // Peringatan jelas saat boot bila env belum diisi (mis. di Vercel).
-  console.warn(
-    "[supabase] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum di-set. Upload media akan gagal."
-  );
-}
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET || "media";
 
-// Client service-role: bypass RLS, hanya dipakai di server.
-export const supabase = createClient(url || "", serviceKey || "", {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+let client: SupabaseClient | null = null;
 
-export default supabase;
+export function getSupabase(): SupabaseClient {
+  if (client) return client;
+  const url = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum di-set di environment.");
+  }
+  client = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return client;
+}
+
+export default getSupabase;

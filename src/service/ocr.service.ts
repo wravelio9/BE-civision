@@ -63,17 +63,28 @@ function isReasonable(lat: number, lon: number): boolean {
 }
 
 // ---- OCR gambar -> koordinat (tesseract.js) ----
+// Anti-crash: OCR cuma cadangan koordinat (EXIF/manual masih ada), jadi gambar rusak
+// atau worker error TIDAK boleh menggagalkan upload, apalagi mematikan server.
+// tesseract.js v7 melempar error dari dalam event handler worker kalau tidak ada
+// errorHandler -> jadi uncaughtException. Karena itu errorHandler wajib dipasang.
 export async function readCoordinatesFromImage(
   image: Buffer | string
 ): Promise<{ latlon: LatLon | null; rawText: string }> {
-  const worker = await createWorker("eng");
+  let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
   try {
+    worker = await createWorker("eng", undefined, {
+      errorHandler: (e: unknown) => console.warn("[ocr] worker error:", e),
+    });
     const { data } = await worker.recognize(image as any);
     const rawText = data.text ?? "";
-    const latlon = parseCoordinatesFromText(rawText);
-    return { latlon, rawText };
+    return { latlon: parseCoordinatesFromText(rawText), rawText };
+  } catch (err: any) {
+    console.warn("[ocr] gagal membaca gambar, dilewati:", err?.message ?? err);
+    return { latlon: null, rawText: "" };
   } finally {
-    await worker.terminate();
+    if (worker) {
+      try { await worker.terminate(); } catch { /* abaikan */ }
+    }
   }
 }
 

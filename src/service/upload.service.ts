@@ -1,10 +1,12 @@
-// Service Upload: simpan file media ke storage + buat record MediaFile.
-// Deteksi gerobak TIDAK di sini lagi (pindah ke frontend ONNX). Backend hanya
-// menyimpan media, lalu frontend mengirim mediaId + detections ke /api/analysis.
-import fs from "node:fs/promises";
+// Service Upload: simpan file media ke Supabase Storage + buat record MediaFile.
+// Deteksi gerobak TIDAK di sini (pindah ke frontend ONNX). Backend hanya menyimpan
+// media ke bucket Supabase lalu mencatat path + URL publiknya di DB.
+// Catatan: backend jalan di serverless (Vercel) yang filesystem-nya read-only,
+// jadi file TIDAK boleh ditulis ke disk lokal.
 import path from "node:path";
 import crypto from "node:crypto";
 import prisma from "../config/prisma.js";
+import { getSupabase, SUPABASE_BUCKET } from "../config/supabase.js";
 import type { SavedMedia } from "../interface/upload.interface.js";
 
 export class UploadError extends Error {
@@ -15,26 +17,40 @@ export class UploadError extends Error {
   }
 }
 
-const STORAGE_DIR = path.resolve(process.cwd(), "storage", "media");
-
 class Service {
-  // Simpan satu file ke storage + buat record MediaFile di DB.
+  // Simpan satu file ke Supabase Storage + buat record MediaFile di DB.
   static async saveOne(file: Express.Multer.File): Promise<SavedMedia> {
     const mimetype = file.mimetype || "";
     const mediaType: "photo" | "video" = mimetype.startsWith("video/") ? "video" : "photo";
 
-    await fs.mkdir(STORAGE_DIR, { recursive: true });
+    // Path objek di bucket: <uuid><ext> (bucket sudah bernama media)
     const id = crypto.randomUUID();
     const ext = path.extname(file.originalname) || "";
-    const storagePath = path.join("storage", "media", `${id}${ext}`);
-    await fs.writeFile(path.resolve(process.cwd(), storagePath), file.buffer);
+    const objectPath = `${id}${ext}`;
+    const supabase = getSupabase();
+
+    // Upload ke bucket Supabase.
+    const { error: uploadErr } = await supabase.storage
+      .from(SUPABASE_BUCKET)
+      .upload(objectPath, file.buffer, {
+        contentType: mimetype || "application/octet-stream",
+        upsert: false,
+      });
+
+    if (uploadErr) {
+      throw new UploadError(`Gagal upload ke storage: ${uploadErr.message}`, 502);
+    }
+
+    // URL publik (bucket di-set public). Dipakai FE untuk menampilkan foto.
+    const { data: pub } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
+    const publicUrl = pub?.publicUrl ?? objectPath;
 
     const media = await prisma.mediaFile.create({
       data: {
         originalName: file.originalname.slice(0, 255),
         mediaType,
         sizeBytes: file.size,
-        storagePath,
+        storagePath: publicUrl, // simpan URL publik agar FE langsung bisa pakai
       },
     });
 

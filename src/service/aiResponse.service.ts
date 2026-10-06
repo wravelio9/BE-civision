@@ -1,6 +1,6 @@
 // Parser respons AI (format Wilson) -> unit analisis yang dipakai backend.
 // Mengurai struktur bersarang data.images.results[] menjadi bentuk sederhana.
-import type { AiResponse, ParsedImageUnit } from "../interface/aiResponse.service.interface.js";
+import type { AiResponse, ParsedImageUnit } from "../interface/aiResponse.interface.js";
 
 // Ambil daftar hasil foto dari respons AI Wilson (aman terhadap field hilang).
 export function parseAiImageResults(res: AiResponse): ParsedImageUnit[] {

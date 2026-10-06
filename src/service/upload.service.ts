@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import prisma from "../config/prisma.js";
-import type { SavedMedia } from "../interface/main.service.interface.js";
+import type { SavedMedia } from "../interface/upload.interface.js";
 
 export class UploadError extends Error {
   status: number;

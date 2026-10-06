@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors"
 
 dotenv.config();
-import apiRoute from "./routes/main.route.js";
+import uploadRoute from "./routes/upload.route.js";
 import zoneRoute from "./routes/zone.route.js";
 import analysisRoute from "./routes/analysis.route.js";
 import violationRoute from "./routes/violation.route.js";
@@ -21,7 +21,7 @@ app.get("/health", (req, res) => {
     res.json({ status: 'OK', env: PORT})
 })
 
-app.use("/api", apiRoute);
+app.use("/api", uploadRoute);
 app.use("/api", zoneRoute);       // Zona: /api/zones
 app.use("/api", analysisRoute);   // Analisis: /api/analysis
 app.use("/api", violationRoute);  // Validasi pelanggaran: /api/violations

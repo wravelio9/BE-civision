@@ -3,7 +3,7 @@
 // baris tetap ada, TIDAK pernah hard-delete). follow-up hanya untuk yang valid.
 // Akses database didelegasikan ke ViolationRepository.
 import ViolationRepository from "../repository/violation.repository.js";
-import type { ValidationStatus, FollowUp } from "../interface/violation.service.interface.js";
+import type { ValidationStatus, FollowUp } from "../interface/violation.interface.js";
 
 export class ViolationError extends Error {
   code: string;

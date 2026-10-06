@@ -3,7 +3,7 @@
 import ZoneRepository from "../repository/zone.repository.js";
 import lineIntersect from "@turf/line-intersect";
 import { lineString, polygon as turfPolygon } from "@turf/helpers";
-import type { LngLat, ZoneInput, ZoneValidationError } from "../interface/zone.service.interface.js";
+import type { LngLat, ZoneInput, ZoneValidationError } from "../interface/zone.interface.js";
 
 export class ZoneError extends Error {
   code: ZoneValidationError;

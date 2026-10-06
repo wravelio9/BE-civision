@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Response } from "express";
 import ReportRepository from "../repository/report.repository.js";
-import type { ReportData } from "../interface/report.service.interface.js";
+import type { ReportData } from "../interface/report.interface.js";
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
 

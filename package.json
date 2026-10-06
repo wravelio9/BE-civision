@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@supabase/supabase-js": "^2.117.2",
     "@turf/boolean-point-in-polygon": "^7.4.0",
     "@turf/boolean-valid": "^7.4.0",
     "@turf/helpers": "^7.4.0",

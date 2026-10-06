@@ -1,7 +1,3 @@
-<<<<<<< HEAD:src/controller/upload.controller.ts
-import { Request, Response, NextFunction } from "express"
-import Service, { UploadError } from "../service/upload.service.js"
-=======
 // Controller @ POST "/upload" (ALL-IN-ONE)
 // Satu tembakan dari FE: foto + hasil deteksi ONNX -> backend:
 //   1. simpan foto + record MediaFile
@@ -10,7 +6,7 @@ import Service, { UploadError } from "../service/upload.service.js"
 //   4. simpan Analysis + Violation
 // Lalu balikin ringkasan. Deteksi gerobak dilakukan di FE (ONNX), bukan di sini.
 import { Request, Response, NextFunction } from "express";
-import Service, { UploadError } from "../service/main.service.js";
+import Service, { UploadError } from "../service/upload.service.js";
 import AnalysisService from "../service/analysis.service.js";
 import type {
   ResolveInput,
@@ -19,7 +15,6 @@ import type {
   LatLon,
 } from "../interface/analysis.interface.js";
 import { readCoordinatesFromImage } from "../service/ocr.service.js";
->>>>>>> ee602ec151661f79b88ea430bcb9c7975f6e6340:src/controller/main.controller.ts
 
 class Controller {
   // POST /upload
@@ -33,38 +28,6 @@ class Controller {
         return res.status(400).json({ success: false, error: "Tidak ada file. Gunakan field 'files'." });
       }
 
-<<<<<<< HEAD:src/controller/upload.controller.ts
-    // Controller @ POST "/upload"
-    // Menerima gambar (field "files"), simpan ke storage + record MediaFile.
-    // Deteksi gerobak dilakukan di frontend (ONNX), bukan di sini.
-    static async upload (req:Request, res:Response, next:NextFunction) {
-        try {
-            const files = (req.files as Express.Multer.File[]) || [];
-            if (files.length === 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    error: "Tidak ada file yang diupload. Gunakan field 'files'." 
-                });
-            }
-
-            const data = await Service.upload(files);
-            let status = data.succeeded;
-
-            if(data.succeeded > 0) status = 201;
-            else status = 400;
-
-            return res.status(status).json({ status, data });
-        } catch (err:any) {
-            if (err instanceof UploadError) {
-                return res.status(err.status).json({ 
-                    success: false, 
-                    error: err.message 
-                });
-            }
-            next(err);
-        }
-    }
-=======
       // Payload opsional (deteksi ONNX dari FE + koordinat manual).
       let payload: { detections?: RawDetection[]; manualLatLon?: LatLon | null } = {};
       if (typeof req.body?.payload === "string") {
@@ -133,7 +96,6 @@ class Controller {
       next(err);
     }
   }
->>>>>>> ee602ec151661f79b88ea430bcb9c7975f6e6340:src/controller/main.controller.ts
 }
 
 export default Controller;

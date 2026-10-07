@@ -4,3 +4,6 @@ node_modules/
 storage/
 *.log
 *.traineddata
+
+# file output sementara (debug)
+_*.txt

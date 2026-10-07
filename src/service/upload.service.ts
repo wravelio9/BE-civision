@@ -29,6 +29,46 @@ function safeExt(filename: string): string {
   return /^\.[a-z0-9]{1,10}$/.test(ext) ? ext : "";
 }
 
+// Coba ulang operasi jaringan yang gagal sesaat (fetch failed / timeout / 5xx).
+// Masalah "kadang gagal kadang tidak" saat upload ke Supabase umumnya karena
+// jaringan internet yang kirim lagi lambat, jadi 1-2 percobaan ulang biasanya lolos.
+const RETRY_ATTEMPTS = 3;      // total percobaan (1 awal + 2 ulang)
+const RETRY_BASE_DELAY_MS = 600;
+
+function isTransientError(err: any): boolean {
+  const msg = String(err?.message ?? err ?? "").toLowerCase();
+  return (
+    msg.includes("fetch failed") ||
+    msg.includes("timeout") ||
+    msg.includes("timed out") ||
+    msg.includes("econnreset") ||
+    msg.includes("etimedout") ||
+    msg.includes("socket") ||
+    msg.includes("network") ||
+    msg.includes("eai_again")
+  );
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Jalankan `fn`; jika gagal karena error jaringan sesaat, ulangi dengan jeda
+// yang membesar (backoff). Error non-jaringan langsung dilempar tanpa diulang.
+async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt >= RETRY_ATTEMPTS || !isTransientError(err)) break;
+      const delay = RETRY_BASE_DELAY_MS * attempt;
+      console.warn(`[upload] ${label} gagal (percobaan ${attempt}/${RETRY_ATTEMPTS}), coba lagi dalam ${delay}ms:`, (err as any)?.message ?? err);
+      await sleep(delay);
+    }
+  }
+  throw lastErr;
+}
+
 export class UploadError extends Error {
   status: number;
   constructor(message: string, status = 400) {
@@ -49,17 +89,17 @@ class Service {
     const objectPath = `${id}${ext}`;
     const supabase = getSupabase();
 
-    // Upload ke bucket Supabase.
-    const { error: uploadErr } = await supabase.storage
-      .from(SUPABASE_BUCKET)
-      .upload(objectPath, file.buffer, {
-        contentType: mimetype || "application/octet-stream",
-        upsert: false,
-      });
-
-    if (uploadErr) {
-      throw new UploadError(`Gagal upload ke storage: ${uploadErr.message}`, 502);
-    }
+    // Upload ke bucket Supabase (dengan retry untuk kegagalan jaringan sesaat).
+    await withRetry("upload storage", async () => {
+      const { error: uploadErr } = await supabase.storage
+        .from(SUPABASE_BUCKET)
+        .upload(objectPath, file.buffer, {
+          contentType: mimetype || "application/octet-stream",
+          upsert: true, // retry aman: objek yang sama boleh ditimpa
+        });
+      // Lempar agar withRetry bisa menilai apakah ini error jaringan sesaat.
+      if (uploadErr) throw new UploadError(`Gagal upload ke storage: ${uploadErr.message}`, 502);
+    });
 
     // URL publik (bucket di-set public). Dipakai FE untuk menampilkan foto.
     const { data: pub } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);

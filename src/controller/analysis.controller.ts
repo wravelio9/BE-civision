@@ -53,20 +53,25 @@ class AnalysisController {
         detections = body.detections;
       }
 
-      // KOORDINAT: baca OCR dari foto (dipakai bila EXIF kosong). Hanya bila ada foto.
+      // KOORDINAT (urutan: EXIF -> OCR -> manual). OCR itu mahal (dan di Vercel
+      // perlu /tmp), jadi hanya dijalankan bila EXIF & manual sama-sama tidak ada.
+      const manualLatLon = body.manualLatLon ?? null;
       let ocrLatLon: LatLon | null = null;
       let ocrRawText = "";
-      if (photoBuffer) {
+
+      // 1) EXIF dulu bila ada foto.
+      const exif = photoBuffer ? await AnalysisService.readExifGps(photoBuffer) : null;
+      const hasExif = !!(exif?.present && exif.latlon);
+
+      // 2) OCR hanya bila EXIF kosong, manual kosong, dan ada foto (cadangan terakhir).
+      if (!hasExif && !manualLatLon && photoBuffer) {
         const ocr = await readCoordinatesFromImage(photoBuffer);
         ocrLatLon = ocr.latlon;
         ocrRawText = ocr.rawText;
       }
 
-      // RESOLVER: EXIF (dari foto) -> OCR -> manual
-      const resolveInput: ResolveInput = {
-        ocrLatLon,
-        manualLatLon: body.manualLatLon ?? null,
-      };
+      // RESOLVER memakai urutan yang sama (EXIF -> OCR -> manual).
+      const resolveInput: ResolveInput = { ocrLatLon, manualLatLon };
       if (photoBuffer) resolveInput.photo = photoBuffer;
       const resolved = await AnalysisService.resolveCoordinate(resolveInput);
 

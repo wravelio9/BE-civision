@@ -62,6 +62,25 @@ function isReasonable(lat: number, lon: number): boolean {
   return true;
 }
 
+// Baca lebar & tinggi JPEG dari header (tanpa library). Mengembalikan null bila
+// bukan JPEG/format tak dikenal -> pemanggil fallback OCR seluruh gambar.
+function readJpegSize(buf: Buffer): { width: number; height: number } | null {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null; // bukan JPEG
+  let o = 2;
+  while (o < buf.length) {
+    if (buf[o] !== 0xff) { o++; continue; }
+    const marker = buf[o + 1]!;
+    // SOF markers berisi dimensi (kecuali C4/C8/CC yang bukan frame).
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      const height = buf.readUInt16BE(o + 5);
+      const width = buf.readUInt16BE(o + 7);
+      return { width, height };
+    }
+    o += 2 + buf.readUInt16BE(o + 2); // lompat ke segmen berikutnya
+  }
+  return null;
+}
+
 // ---- OCR gambar -> koordinat (tesseract.js) ----
 // Anti-crash: OCR cuma cadangan koordinat (EXIF/manual masih ada), jadi gambar rusak
 // atau worker error TIDAK boleh menggagalkan upload, apalagi mematikan server.
@@ -72,10 +91,24 @@ export async function readCoordinatesFromImage(
 ): Promise<{ latlon: LatLon | null; rawText: string }> {
   let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
   try {
-    worker = await createWorker("eng", undefined, {
-      errorHandler: (e: unknown) => console.warn("[ocr] worker error:", e),
-    });
-    const { data } = await worker.recognize(image as any);
+    // Di serverless (Vercel) filesystem read-only kecuali /tmp. Tesseract perlu
+    // menulis cache + file bahasa, jadi arahkan ke /tmp. Di lokal pakai default.
+    const onVercel = !!process.env.VERCEL;
+    const options = onVercel
+      ? { errorHandler: (e: unknown) => console.warn("[ocr] worker error:", e), langPath: "/tmp", cachePath: "/tmp" }
+      : { errorHandler: (e: unknown) => console.warn("[ocr] worker error:", e) };
+    worker = await createWorker("eng", undefined, options);
+
+    // Overlay koordinat Timemark ada di 1/3 bawah foto. OCR seluruh foto yang ramai
+    // (gerobak, jalan) menghasilkan teks acak, jadi batasi ke area bawah via rectangle
+    // bawaan tesseract (tanpa library crop). Butuh dimensi gambar; bila gagal baca
+    // dimensi, fallback OCR seluruh gambar.
+    const size = Buffer.isBuffer(image) ? readJpegSize(image) : null;
+    const recognizeOpts = size
+      ? { rectangle: { left: 0, top: Math.floor(size.height * 0.66), width: size.width, height: size.height - Math.floor(size.height * 0.66) } }
+      : undefined;
+
+    const { data } = await worker.recognize(image as any, recognizeOpts);
     const rawText = data.text ?? "";
     return { latlon: parseCoordinatesFromText(rawText), rawText };
   } catch (err: any) {

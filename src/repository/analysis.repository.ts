@@ -15,29 +15,38 @@ class AnalysisRepository {
     return prisma.mediaFile.findUnique({ where: { id } });
   }
 
-  // Buat Analysis + semua Violation-nya dalam satu transaksi (atomik, Req 4.7).
+  // Buat Analysis + semua Violation-nya secara berurutan (TANPA $transaction).
+  //
+  // Catatan: sebelumnya ini dibungkus prisma.$transaction (interaktif) agar atomik.
+  // Namun transaksi interaktif lewat Supabase connection pooler (pgbouncer, mode
+  // transaction) menggantung/timeout di serverless Vercel -> endpoint /api/analysis
+  // tidak pernah merespons. Karena volume data kecil (1 Analysis + sedikit Violation)
+  // dan kegagalan di tengah sangat jarang, kita simpan berurutan biasa.
+  // Jika Violation gagal, Analysis sudah terlanjur dibuat; createMany dipakai agar
+  // semua Violation ditulis dalam satu perintah (lebih cepat & lebih kecil peluang
+  // gagal sebagian dibanding membuat satu per satu).
   static async createAnalysisWithViolations(
     analysisData: AnalysisCreateData,
     violations: any[],
   ) {
-    return prisma.$transaction(async (tx) => {
-      const analysis = await tx.analysis.create({
-        data: {
-          mediaId: analysisData.mediaId,
-          detectorMode: analysisData.detectorMode,
-          status: "done",
-          progress: 100,
-          photoCount: analysisData.photoCount,
-          videoDuration: analysisData.videoDuration,
-        },
-      });
-
-      for (const v of violations) {
-        await tx.violation.create({ data: { ...v, analysisId: analysis.id } });
-      }
-
-      return analysis;
+    const analysis = await prisma.analysis.create({
+      data: {
+        mediaId: analysisData.mediaId,
+        detectorMode: analysisData.detectorMode,
+        status: "done",
+        progress: 100,
+        photoCount: analysisData.photoCount,
+        videoDuration: analysisData.videoDuration,
+      },
     });
+
+    if (violations.length > 0) {
+      await prisma.violation.createMany({
+        data: violations.map((v) => ({ ...v, analysisId: analysis.id })),
+      });
+    }
+
+    return analysis;
   }
 }
 

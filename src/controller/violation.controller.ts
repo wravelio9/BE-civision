@@ -13,7 +13,10 @@ class ViolationController {
   // GET /api/violations  (opsional query: ?analysisId=...)
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const analysisId = typeof req.query.analysisId === "string" ? req.query.analysisId : undefined;
+      let analysisId: string | undefined = undefined;
+      if (typeof req.query.analysisId === "string") {
+        analysisId = req.query.analysisId;
+      }
       const violations = await ViolationService.listActive(analysisId);
       return res.json({ ok: true, violations });
     } catch (err) {

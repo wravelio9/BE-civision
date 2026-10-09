@@ -24,7 +24,11 @@ class Controller {
             }
 
             const data = await Service.upload(files);
-            const status = data.succeeded > 0 ? 201 : 400;
+            // 201 bila minimal satu file berhasil disimpan, selain itu 400.
+            let status = 400;
+            if (data.succeeded > 0) {
+                status = 201;
+            }
 
             return res.status(status).json({ status, data });
         } catch (err:any) {

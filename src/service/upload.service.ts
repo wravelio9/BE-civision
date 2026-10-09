@@ -26,7 +26,10 @@ function isMediaMime(mimetype: string): boolean {
 // Ekstensi aman dari nama file: huruf/angka saja, maks 10 karakter.
 function safeExt(filename: string): string {
   const ext = path.extname(filename || "").toLowerCase();
-  return /^\.[a-z0-9]{1,10}$/.test(ext) ? ext : "";
+  if (/^\.[a-z0-9]{1,10}$/.test(ext)) {
+    return ext;
+  }
+  return "";
 }
 
 // Coba ulang operasi jaringan yang gagal sesaat (fetch failed / timeout / 5xx).
@@ -81,7 +84,10 @@ class Service {
   // Simpan satu file ke Supabase Storage + buat record MediaFile di DB.
   static async saveOne(file: Express.Multer.File): Promise<SavedMedia> {
     const mimetype = file.mimetype || "";
-    const mediaType: "photo" | "video" = mimetype.startsWith("video/") ? "video" : "photo";
+    let mediaType: "photo" | "video" = "photo";
+    if (mimetype.startsWith("video/")) {
+      mediaType = "video";
+    }
 
     // Path objek di bucket: <uuid><ext> (bucket sudah bernama media)
     const id = crypto.randomUUID();
@@ -126,8 +132,16 @@ class Service {
   // Langkah 1 (upload langsung): buat signed upload URL ke Supabase Storage.
   // File TIDAK lewat backend, jadi tidak kena batas body Vercel (4.5 MB).
   static async createSignedUpload(input: SignedUploadRequest): Promise<SignedUploadResult> {
-    const filename = typeof input?.filename === "string" ? input.filename.trim() : "";
-    const contentType = typeof input?.contentType === "string" ? input.contentType : "";
+    let filename = "";
+    if (typeof input?.filename === "string") {
+      filename = input.filename.trim();
+    }
+
+    let contentType = "";
+    if (typeof input?.contentType === "string") {
+      contentType = input.contentType;
+    }
+
     const sizeBytes = Number(input?.sizeBytes);
 
     if (!filename) throw new UploadError("filename wajib diisi.");
@@ -160,11 +174,16 @@ class Service {
   // Langkah 2 (upload langsung): FE sudah upload ke Supabase, catat MediaFile di DB.
   // Ukuran & tipe diambil dari metadata Supabase, bukan dipercaya dari FE.
   static async confirmUpload(input: ConfirmUploadRequest): Promise<SavedMedia> {
-    const objectPath = typeof input?.path === "string" ? input.path.trim() : "";
-    const originalName =
-      typeof input?.originalName === "string" && input.originalName.trim()
-        ? input.originalName.trim().slice(0, 255)
-        : objectPath;
+    let objectPath = "";
+    if (typeof input?.path === "string") {
+      objectPath = input.path.trim();
+    }
+
+    // Pakai nama asli dari FE bila ada; selain itu pakai path objek.
+    let originalName = objectPath;
+    if (typeof input?.originalName === "string" && input.originalName.trim()) {
+      originalName = input.originalName.trim().slice(0, 255);
+    }
 
     if (!OBJECT_PATH_RE.test(objectPath)) {
       throw new UploadError("path tidak valid. Gunakan path dari /api/upload/signed-url.");
@@ -187,10 +206,15 @@ class Service {
 
     const { data: pub } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(objectPath);
 
+    let mediaType: "photo" | "video" = "photo";
+    if (contentType.startsWith("video/")) {
+      mediaType = "video";
+    }
+
     const media = await prisma.mediaFile.create({
       data: {
         originalName,
-        mediaType: contentType.startsWith("video/") ? "video" : "photo",
+        mediaType,
         sizeBytes,
         storagePath: pub?.publicUrl ?? objectPath,
       },

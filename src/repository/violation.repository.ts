@@ -1,15 +1,21 @@
 // Repository Pelanggaran: membungkus semua akses database (Prisma) untuk entitas Violation.
 // Logika bisnis (validasi status, aturan follow-up) TIDAK di sini — itu di ViolationService.
 import prisma from "../config/prisma.js";
+import type { Prisma } from "../../generated/prisma/client.js";
 
 class ViolationRepository {
   // Daftar pelanggaran aktif (bukan invalid), opsional filter per analysis.
   static findActive(analysisId?: string) {
+    const where: Prisma.ViolationWhereInput = {
+      status: { not: "invalid" },
+    };
+    // Filter per analysis hanya bila analysisId diberikan.
+    if (analysisId) {
+      where.analysisId = analysisId;
+    }
+
     return prisma.violation.findMany({
-      where: {
-        status: { not: "invalid" },
-        ...(analysisId ? { analysisId } : {}),
-      },
+      where,
       orderBy: { createdAt: "desc" },
     });
   }

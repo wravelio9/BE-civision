@@ -21,8 +21,14 @@ class AnalysisController {
   // field "payload" (JSON) ATAU body JSON: { mediaId, detections, manualLatLon? }
   static async analyze(req: Request, res: Response, next: NextFunction) {
     try {
-      const body: AnalyzeBody =
-        typeof req.body?.payload === "string" ? JSON.parse(req.body.payload) : req.body;
+      // Body bisa dikirim sebagai field "payload" (string JSON, saat multipart)
+      // atau langsung sebagai body JSON.
+      let body: AnalyzeBody;
+      if (typeof req.body?.payload === "string") {
+        body = JSON.parse(req.body.payload);
+      } else {
+        body = req.body;
+      }
 
       if (!body?.mediaId) {
         return res.status(400).json({ ok: false, message: "mediaId wajib diisi." });
@@ -42,7 +48,10 @@ class AnalysisController {
       }
 
       // Deteksi datang dari frontend (ONNX). Default [] bila tidak ada.
-      const detections: RawDetection[] = Array.isArray(body.detections) ? body.detections : [];
+      let detections: RawDetection[] = [];
+      if (Array.isArray(body.detections)) {
+        detections = body.detections;
+      }
 
       // KOORDINAT: baca OCR dari foto (dipakai bila EXIF kosong). Hanya bila ada foto.
       let ocrLatLon: LatLon | null = null;

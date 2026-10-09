@@ -23,11 +23,19 @@ class HistoryService {
     const analysis = await HistoryRepository.findById(id);
     if (!analysis) return null;
 
+    // Info media (null bila analisis tidak punya media).
+    let media: { id: string; name: string; type: string } | null = null;
+    if (analysis.media) {
+      media = {
+        id: analysis.media.id,
+        name: analysis.media.originalName,
+        type: analysis.media.mediaType,
+      };
+    }
+
     return {
       id: analysis.id,
-      media: analysis.media
-        ? { id: analysis.media.id, name: analysis.media.originalName, type: analysis.media.mediaType }
-        : null,
+      media,
       analyzedAt: analysis.analyzedAt,
       status: analysis.status,
       totalViolations: analysis.violations.length,

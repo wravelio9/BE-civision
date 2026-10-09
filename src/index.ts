@@ -56,7 +56,11 @@ app.get("/health/db", async (req, res) => {
         result.dbError = err?.message ?? String(err);
     }
 
-    return res.status(result.dbConnected ? 200 : 500).json(result);
+    let statusCode = 500;
+    if (result.dbConnected) {
+        statusCode = 200;
+    }
+    return res.status(statusCode).json(result);
 })
 
 app.use("/api", uploadRoute);

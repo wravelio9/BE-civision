@@ -53,7 +53,10 @@ export function streamReportPdf(data: ReportData, res: Response) {
   // Bukti visual (bila file ada)
   doc.fontSize(12).fillColor("black").text("Bukti Visual:", { underline: true });
   doc.moveDown(0.5);
-  const imgPath = data.evidencePath ? path.resolve(process.cwd(), data.evidencePath) : null;
+  let imgPath: string | null = null;
+  if (data.evidencePath) {
+    imgPath = path.resolve(process.cwd(), data.evidencePath);
+  }
   if (imgPath && fs.existsSync(imgPath)) {
     try {
       doc.image(imgPath, { fit: [480, 360], align: "center" });

@@ -155,7 +155,10 @@ export async function reverseGeocode(latlon: LatLon): Promise<string | null> {
     const road = a.road || a.pedestrian || a.footway || a.residential || null;
     if (road) {
       const area = a.suburb || a.village || a.town || a.city_district || a.city || "";
-      return area ? `${road}, ${area}` : road;
+      if (area) {
+        return `${road}, ${area}`;
+      }
+      return road;
     }
     // fallback ke display_name ringkas bila tidak ada 'road'
     return data.display_name ?? null;
@@ -190,8 +193,11 @@ class AnalysisService {
     try {
       const marker = `/storage/v1/object/public/${SUPABASE_BUCKET}/`;
       const idx = storagePath.indexOf(marker);
-      const objectPath =
-        idx >= 0 ? decodeURIComponent(storagePath.slice(idx + marker.length)) : storagePath;
+      // Bila storagePath berupa URL publik, ambil bagian path objeknya saja.
+      let objectPath = storagePath;
+      if (idx >= 0) {
+        objectPath = decodeURIComponent(storagePath.slice(idx + marker.length));
+      }
 
       const { data, error } = await getSupabase().storage.from(SUPABASE_BUCKET).download(objectPath);
       if (error || !data) {

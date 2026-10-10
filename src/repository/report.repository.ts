@@ -11,12 +11,20 @@ class ReportRepository {
     return prisma.violation.count({ where: { status } });
   }
 
-  // Semua pelanggaran (semua status) beserta relasi media & frame.
-  static findAllWithRelations() {
-    return prisma.violation.findMany({
-      include: { analysis: { include: { media: true } }, annotatedFrames: true },
-      orderBy: { createdAt: "desc" },
-    });
+  // Satu halaman pelanggaran (semua status) beserta relasi media & frame,
+  // sekaligus total baris. Dijalankan dalam satu transaksi agar halaman & total konsisten.
+  // Urutan: terbaru dulu; id sebagai pemecah seri supaya urutan stabil bila
+  // createdAt sama (tidak ada baris dobel/hilang antar halaman).
+  static findAllWithRelations(skip: number, take: number) {
+    return prisma.$transaction([
+      prisma.violation.findMany({
+        include: { analysis: { include: { media: true } }, annotatedFrames: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip,
+        take,
+      }),
+      prisma.violation.count(),
+    ]);
   }
 
   // Satu pelanggaran lengkap untuk isi PDF.

@@ -61,6 +61,11 @@ model Violation {
   followUp         FollowUpStatus   @default(belum)
   createdAt        DateTime         @default(now())
   annotatedFrames  AnnotatedFrame[]
+
+  // Tabel laporan: ORDER BY createdAt DESC, id DESC + OFFSET/LIMIT (pagination).
+  @@index([createdAt(sort: Desc), id])
+  // Kartu statistik: COUNT per status.
+  @@index([status])
 }
 
 model AnnotatedFrame {
